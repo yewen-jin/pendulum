@@ -88,13 +88,13 @@ Open `http://localhost:5173` in Chrome or Edge (Firefox lacks some Web Audio con
 
 On first visit the page shows the **pendulum · setup** screen.
 
-1. **Browser permission prompt** — the page immediately requests mic + camera access to enumerate device labels. Click **Allow**.
+1. **Browser permission prompt** — the page requests mic + camera access to enumerate device labels. If the machine has no camera (e.g. Mac mini), it falls back to audio-only permission automatically. Click **Allow** on whatever prompt appears.
 
-2. **Nord audio input** — select the ROG's line-in. It typically appears as `"Line In (Realtek..."` or the name of whatever audio interface you've routed the Y-split into. Do not pick the built-in mic.
+2. **Nord audio input** — select the audio input receiving the Nord's Y-split leg. On ROG this is typically `"Line In (Realtek..."`. On Mac mini for local testing, select the SSL2 or built-in input. Do not pick the built-in mic.
 
-3. **Camera — performer 1** — select your webcam. For the v1 smoke test, camera is optional: you can leave both camera selects at `(none)`. The `audio.*` and `phone.*` signals will still drive the `drift` scene. Pose signals (`pose.motion`, `pose.openness`) will remain at their fallback value of 0.
+3. **Camera — performer 1** — select your webcam, or leave at `(none)`. Camera is optional — `audio.*`, `phone.*`, and `midi.*` signals still drive all scenes without it. Pose signals (`pose.motion`, `pose.openness`) remain at 0 when no camera is selected.
 
-4. Click **start**. Selections are saved to `localStorage`; subsequent page loads skip this screen.
+4. Click **start**. Selections are saved to `localStorage`; subsequent page loads skip this screen. To re-show the setup screen, clear `localStorage` in DevTools → Application → Local Storage → delete `pendulum.*` keys, then reload.
 
 5. The Hydra canvas should immediately become active and the `drift` scene should appear — slow flowing noise with faint stars.
 
@@ -112,7 +112,17 @@ Press **`d`** to toggle the signal-monitor overlay. You should see a green-on-bl
 | `phone.mode`        | Steps 0 / 1 / 2 / 3 every ~8 s                     |
 | `ableton.cc.71`     | Faster oscillation 0 → 1 → 0 over ~4 s             |
 
-**With Nord plugged into ROG line-in and playing:**
+**With a MIDI controller plugged in via USB:**
+
+| Signal key          | Expected behaviour                                  |
+| ------------------- | --------------------------------------------------- |
+| `midi.cc.16`..`31`  | Responds to knob turns (0..1 range)                  |
+| `midi.note`         | Brief impulse on each note-on                        |
+| `midi.velocity`     | Jumps to velocity of last note played                |
+
+Web MIDI reads the controller directly in the browser (single-machine setup). For two-machine setup, run the MIDI sender on the Mac mini instead — see step 6b below.
+
+**With Nord plugged into line-in and playing:**
 
 | Signal key          | Expected behaviour                                  |
 | ------------------- | --------------------------------------------------- |
@@ -124,14 +134,32 @@ If a signal key is not appearing in the overlay at all, it has never been writte
 
 ---
 
+## 6b. Two-machine setup — MIDI sender on Mac mini
+
+If testing the two-machine setup (MIDI controller on Mac mini, visuals on ROG):
+
+```sh
+# On Mac mini:
+cd pendulum/sender && npm install
+BRIDGE_HOST=<rog_ip> npm start
+```
+
+Expected output: lists available MIDI devices and confirms `sending to udp://<rog_ip>:9000`. Turn a knob — the ROG's debug overlay should show `midi.cc.<N>` values updating. This replaces Web MIDI; both paths write the same bus keys.
+
+---
+
 ## 7. Expected visual reaction — `drift` scene
 
-With audio and OSC both active you should observe:
+With audio and/or MIDI active you should observe:
 
-- **Brightness / density** — noise grain brightens and thickens as `audio.rms` rises. Long sustained notes = full bright starfield.
-- **Color shift** — red channel increases with high `audio.centroid` (bright synth patches); blue channel increases with low centroid (pads/bass).
-- **Vertical scroll speed** — starfield drifts faster when `audio.rms` is high.
-- **Crosshair pop** — a faint green `shape(4)` cross pulses in sync with `audio.onset` (each note attack). It's subtle — look for the brief green flash at note starts.
+- **Brightness / density** — noise grain brightens and thickens as `audio.rms` rises. Long sustained notes = full bright starfield. CC25 (brightness knob) also shifts this.
+- **Color shift** — red channel increases with high `audio.centroid` (bright synth patches); blue channel increases with low centroid (pads/bass). CC17 (color knob) shifts the palette further.
+- **Vertical scroll speed** — starfield drifts faster when `audio.rms` is high. CC19 (speed knob) adds additional scroll.
+- **Kaleidoscope** — CC18 increases symmetry from 1 (none) up to 7 segments.
+- **Rotation** — CC22 rotates the entire canvas.
+- **Scale / zoom** — CC23 zooms in.
+- **Modulation** — CC20 increases the voronoi warp depth.
+- **Crosshair pop** — a faint green `shape(4)` cross pulses in sync with `audio.onset` (each note attack). Subtle — look for the brief green flash at note starts.
 - **Global intensity** — `phone.intensity` from the test script scales the crosshair's mix level, so it will visibly dim and brighten over the 10-second sine cycle.
 - **Scene switches** — every 8 s `phone.mode` steps → the scene switches: `drift` → `debris` → `signalLoss` → `reentry` → back to `drift`.
 - **Panic** — every ~20 s the screen briefly blacks out for the duration of the `phone.panic` impulse decay (~250 ms).
@@ -153,6 +181,19 @@ With audio and OSC both active you should observe:
 2. **`test-osc.mjs` died silently** — check Tab C. If you see no repeated output, it may have crashed; re-run it. Add `--trace-uncaught` if needed.
 3. **Firewall blocking UDP 9000** — on Windows 10, Windows Defender Firewall may block the UDP port. Go to Control Panel → Windows Defender Firewall → Advanced Settings → Inbound Rules, add a rule for UDP port 9000. For the smoke test (loopback only) this usually is not needed, but matters when the Mac mini or phone sends from the network.
 4. **WebSocket not connected** — check the browser console for `[bus] bridge connected ws://localhost:9001`. If absent or showing repeated `bridge closed, retrying`, the bridge WS server is not reachable (wrong port, or bridge crashed).
+
+### No MIDI signals (`midi.cc.*` absent from overlay)
+
+**Single-machine (Web MIDI):**
+1. **Browser doesn't support Web MIDI** — Firefox has no Web MIDI API. Use Chrome or Edge.
+2. **Permission denied** — some browsers require HTTPS or `localhost` for Web MIDI. Check the console for `[midi] Web MIDI not available`.
+3. **Controller not detected** — check `[midi] found: <name>` in the console. If no devices listed, verify the controller is plugged in and recognized by the OS.
+
+**Two-machine (MIDI sender):**
+1. **Sender not running** — check Mac mini terminal shows `[midi] listening: <device>`.
+2. **Wrong BRIDGE_HOST** — sender must point at the ROG's IP, not `127.0.0.1`.
+3. **Firewall** — same as the OSC troubleshooting above (UDP 9000 must be open on ROG).
+4. **No MIDI devices found** — run `npm run list` in the sender directory to check. Verify the controller is plugged into the Mac mini's USB.
 
 ### Hydra canvas black
 

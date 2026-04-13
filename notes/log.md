@@ -94,6 +94,67 @@ Each entry is a level-2 heading with ISO date + topic. Inside, four fixed bullet
 
 **Next:**
 - Two-machine LAN test
+
+## 2026-04-13 — Local setup on ROG + bridge/visuals bring-up
+
+**Decided:**
+
+- All three npm packages (`bridge/`, `visuals/`, `sender/`) installed locally on ROG for dev workflow
+- Chrome access via `http://localhost:5173` for frontend, WebSocket to `ws://localhost:9001` for bridge
+
+**Built:**
+
+- npm install completed: `bridge/` (13 packages), `visuals/` (50 packages), `sender/` (22 packages)
+- Vite dev server running on http://localhost:5173 (HMR enabled)
+- Bridge OSC/WS server running on 0.0.0.0:9000 (UDP) + 0.0.0.0:9001 (WS)
+- WebSocket client connection successful: `[ws] client connected (1 total) from 127.0.0.1`
+- Git pull completed: docs/ updated (abletonosc.md, bringup.md, osc-addresses.md all refreshed)
+
+**Open questions:**
+
+- None identified; system up and connected
+
+**Next:**
+
+- Confirm MIDI signal flow from Mac mini sender to ROG bridge (verify OSC 9000 packets arrive)
+- Test actual MIDI controller on Mac mini with sender/midi-to-osc.mjs
+- Run live improv test once signal path fully validated
+
+## 2026-04-13 — Docs update + .env + settings UI
+
+**Decided:**
+
+- AbletonOSC doc corrected: `config.py` doesn't exist (real config is `constants.py`), AbletonOSC is request-response not broadcast, subscription logic not written. Marked low priority — MIDI sender covers main control path.
+- M4L device marked as abandoned in docs (oscformat missing). Superseded by Node sender.
+- MIDI sender promoted to recommended approach in `docs/abletonosc.md`.
+- Sender uses `.env` file (via dotenv) for BRIDGE_HOST/BRIDGE_PORT instead of requiring inline env vars every run.
+- Visuals connection settings (bridge WS host/port) editable from a hidable settings panel toggled with `s` key.
+
+**Built:**
+
+- Updated `docs/abletonosc.md` — rewrote completely: MIDI sender as recommended path, AbletonOSC marked future/non-functional with corrected setup steps, M4L marked abandoned
+- Updated `docs/osc-addresses.md` — added MIDI sender section (the primary working path), marked Ableton section as future, expanded derived bus keys table (added `pose.*.cx`, all `midi.*` Web MIDI keys, noted sender/WebMIDI key equivalence)
+- Updated `docs/bringup.md` — fixed camera-optional flow in step 5, added MIDI controller signals to debug overlay table (step 6), added step 6b for two-machine MIDI sender setup, expanded drift scene description with all CC knob effects (step 7), added MIDI troubleshooting section (Web MIDI + sender paths)
+- Created `sender/.env` and `sender/.env.example` with BRIDGE_HOST=127.0.0.1, BRIDGE_PORT=9000
+- Added `dotenv` dependency to sender, `import 'dotenv/config'` in `midi-to-osc.mjs`
+- Created `visuals/src/settings.ts` — hidable settings panel for bridge WS host/port, saves to localStorage, live URL preview, reload on save
+- Added `#settings` div + terminal-aesthetic CSS to `visuals/index.html`
+- `visuals/src/main.ts` now uses `getBridgeUrl()` from settings instead of hardcoded URL
+- Guarded `d`/`f` hotkeys in `debug.ts` so they don't fire while typing in settings input fields
+
+**Open questions:**
+
+- Two-machine LAN test still pending (bridge on ROG + sender on Mac mini over travel router)
+- Settings panel only covers bridge connection — should it include audio gain, smoothing alpha, or other tuning params?
+- Should `notes/status.md` be updated to reflect docs overhaul and new settings UI?
+
+**Next:**
+
+- Two-machine LAN test
+- MediaPipe pose tracking on ROG with webcam
+- MobMuPlat layout design
+- Scene aesthetic iteration under projector
+
 - MediaPipe pose tracking on ROG with webcam
 - MobMuPlat layout design
 - Scene aesthetic iteration under projector

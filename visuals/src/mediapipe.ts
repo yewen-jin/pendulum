@@ -14,6 +14,12 @@ let debugCanvas: HTMLCanvasElement | null = null;
 let debugCtx: CanvasRenderingContext2D | null = null;
 let showSkeleton = false;
 
+// Upper-body landmark count: indices 0–16 cover nose, eyes, ears,
+// shoulders, elbows, and wrists — everything visible in chest-up framing.
+// Lower-body landmarks (17–32) are excluded from motion/centroid calculations
+// because MediaPipe hallucinates their positions when legs are off-screen.
+const UPPER_BODY = 17;
+
 // Blendshape names we extract and their bus key suffixes
 const FACE_BLENDSHAPE_MAP: [string, string][] = [
   ['jawOpen', 'mouthOpen'],
@@ -173,12 +179,12 @@ function loop() {
   let motion = 0;
   if (prevLandmarks) {
     let acc = 0;
-    for (let i = 0; i < lm.length; i++) {
+    for (let i = 0; i < UPPER_BODY; i++) {
       const dx = lm[i].x - prevLandmarks[i].x;
       const dy = lm[i].y - prevLandmarks[i].y;
       acc += Math.hypot(dx, dy);
     }
-    motion = Math.min(1, (acc / lm.length) * config.poseGain);
+    motion = Math.min(1, (acc / UPPER_BODY) * config.poseGain);
   }
   prevLandmarks = lm.map(p => ({ x: p.x, y: p.y }));
 
@@ -186,8 +192,8 @@ function loop() {
   const openness = lw && rw ? Math.min(1, Math.hypot(lw.x - rw.x, lw.y - rw.y) * 1.2) : 0;
 
   let cx = 0;
-  for (const p of lm) cx += p.x;
-  cx /= lm.length;
+  for (let i = 0; i < UPPER_BODY; i++) cx += lm[i].x;
+  cx /= UPPER_BODY;
 
   if (config.poseContinuous) {
     set(`pose.${performerTag}.motion`, motion);

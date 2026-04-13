@@ -51,3 +51,5 @@ docs/       Specs + setup notes
 - Face blendshapes not yet wired (add `FaceLandmarker` alongside `PoseLandmarker`).
 - Four demo modes in `visuals/src/scenes.ts` — iterate these during rehearsal.
 - No Ableton-side M4L device bundled; follow `docs/abletonosc.md`.
+
+- 

@@ -75,8 +75,10 @@ export function ingestOsc(path: string, args: any[]) {
   if (typeof v === 'number') set(key, v);
   else if (typeof v === 'boolean') set(key, v ? 1 : 0);
   // string-valued OSC (e.g. named scene) stored under a sibling key
-  else if (typeof v === 'string') (state as any)._strings ??= new Map(),
+  else if (typeof v === 'string') {
+    if (!(state as any)._strings) (state as any)._strings = new Map();
     (state as any)._strings.set(key, v);
+  }
 }
 
 export function getString(key: string): string | undefined {

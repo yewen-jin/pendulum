@@ -81,3 +81,45 @@ Scene functions should only use bus getters (`get`, `pulse`) for reactive parame
 - Visuals are TypeScript via Vite. Loose `strict` — `noImplicitAny: false` — because Hydra is dynamic.
 - Keep reactive parameter functions tiny and branchless in `scenes.ts`; they run every frame.
 - When adding a new OSC path, update `docs/osc-addresses.md` first, then wire it on the Ableton/phone side, then optionally reference it in a scene.
+
+## Subagent workflow
+
+The main session dispatches tasks to specialized subagents and verifies their output. This keeps the main context light across a long project lifetime. Every subagent starts cold — each brief must stand alone and point at the files it needs.
+
+### Roles
+
+| Role              | Model  | When to dispatch                                                                 |
+| ----------------- | ------ | -------------------------------------------------------------------------------- |
+| `scene-dev`       | Opus   | Iterate or add a Hydra scene (in `visuals/src/scenes.ts`).                       |
+| `signal-mapper`   | Sonnet | Add/rename an OSC path, thread it through `bus.ts` and scenes, update docs.      |
+| `hw-integrator`   | Sonnet | M4L patch text, AbletonOSC config, MobMuPlat layout/addresses.                   |
+| `feature-builder` | Opus   | Larger features — second pose tracker, FaceLandmarker, in-browser recorder, etc. |
+| `notes-keeper`    | Haiku  | Run after each substantive turn, in background, to append to the session log.    |
+
+### Brief checklist
+
+A good subagent brief includes:
+1. One-sentence goal.
+2. Which files to read first (always include `CLAUDE.md` + relevant module).
+3. Concrete acceptance criteria ("scene foo responds to `pose.motion` with kaleid rotation").
+4. Constraint reminders ("reactive closures only — never capture raw bus values").
+5. Expected deliverable format (patched files vs. returned text).
+
+### Notes keeper
+
+Runs with `run_in_background: true` after each substantive turn. Appends a structured entry to the session log:
+
+- timestamp
+- what was discussed / decided
+- what was built / changed
+- open questions and follow-ups
+
+Log location: **TBD** — either `pendulum/notes/log.md` or a Notion page if the Notion MCP is configured for this workspace. The main session should decide once and tell the notes-keeper the destination in every brief so it remains self-contained.
+
+### Things the main session cannot verify
+
+- Visual output (projection, colors, motion feel) — rely on user screenshots and verbal feedback.
+- Audio latency / onset sensitivity — rely on user's subjective report.
+- MediaPipe tracking quality on the actual ROG webcam — rely on debug overlay screenshots.
+
+Do not pretend to have tested these. Ask the user to run and report.

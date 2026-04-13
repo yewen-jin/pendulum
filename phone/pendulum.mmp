@@ -1,72 +1,118 @@
 {
-  "class": "Interface",
-  "screenWidth": 320,
-  "screenHeight": 568,
-  "backgroundColor": [0, 0, 0],
-  "pages": 1,
-  "widgets": [
+  "pdFile": "",
+  "port": 9000,
+  "isOrientationLandscape": false,
+  "startPageIndex": 0,
+  "pageCount": 1,
+  "canvasType": "widePhone",
+  "isPageScrollShortEnd": false,
+  "version": 2,
+  "backgroundColor": [0, 0, 0, 1],
+  "gui": [
     {
-      "class": "Label",
-      "frame": [0, 4, 320, 20],
+      "class": "MMPLabel",
+      "address": "/label/title",
+      "frame": [10, 8, 300, 30],
       "text": "PENDULUM",
-      "color": [0, 0.7, 0.3],
-      "textSize": 12
+      "textSize": 16,
+      "textFontFamily": "Default",
+      "textFont": "",
+      "androidFont": "Roboto-Regular",
+      "color": [0, 0.7, 0.3, 1],
+      "highlightColor": [0, 1, 0.4, 1]
     },
     {
-      "class": "Button",
-      "frame": [0, 28, 320, 60],
+      "class": "MMPButton",
       "address": "/phone/panic",
-      "color": [0.9, 0.05, 0.05]
+      "frame": [10, 42, 300, 70],
+      "color": [0.9, 0.05, 0.05, 1],
+      "highlightColor": [1, 0.3, 0.3, 1]
     },
     {
-      "class": "Label",
-      "frame": [0, 28, 320, 60],
+      "class": "MMPLabel",
+      "address": "/label/panic",
+      "frame": [10, 42, 300, 70],
       "text": "PANIC",
-      "color": [1, 1, 1],
-      "textSize": 22
+      "textSize": 28,
+      "textFontFamily": "Default",
+      "textFont": "",
+      "androidFont": "Roboto-Regular",
+      "color": [1, 1, 1, 1],
+      "highlightColor": [1, 1, 1, 1]
     },
     {
-      "class": "Label",
-      "frame": [4, 100, 60, 16],
+      "class": "MMPLabel",
+      "address": "/label/scene",
+      "frame": [10, 122, 100, 20],
       "text": "SCENE",
-      "color": [0, 0.7, 0.3],
-      "textSize": 11
+      "textSize": 11,
+      "textFontFamily": "Default",
+      "textFont": "",
+      "androidFont": "Roboto-Regular",
+      "color": [0, 0.7, 0.3, 0.7],
+      "highlightColor": [0, 0.7, 0.3, 1]
     },
     {
-      "class": "Menu",
-      "frame": [0, 118, 320, 52],
+      "class": "MMPSlider",
       "address": "/phone/mode",
-      "titles": ["drift", "debris", "sigLoss", "reentry"],
-      "color": [0, 0.55, 0.25]
+      "frame": [10, 144, 300, 50],
+      "isHorizontal": true,
+      "range": 3,
+      "color": [0, 0.55, 0.25, 1],
+      "highlightColor": [0, 0.9, 0.4, 1]
     },
     {
-      "class": "Label",
-      "frame": [4, 180, 60, 16],
+      "class": "MMPLabel",
+      "address": "/label/modes",
+      "frame": [10, 196, 300, 16],
+      "text": "drift        debris     sigLoss    reentry",
+      "textSize": 10,
+      "textFontFamily": "Default",
+      "textFont": "",
+      "androidFont": "Roboto-Regular",
+      "color": [0, 0.7, 0.3, 0.5],
+      "highlightColor": [0, 0.7, 0.3, 1]
+    },
+    {
+      "class": "MMPLabel",
+      "address": "/label/intensity",
+      "frame": [4, 220, 70, 16],
       "text": "INTENSITY",
-      "color": [0.9, 0.6, 0.05],
-      "textSize": 10
+      "textSize": 10,
+      "textFontFamily": "Default",
+      "textFont": "",
+      "androidFont": "Roboto-Regular",
+      "color": [0.9, 0.6, 0.05, 0.7],
+      "highlightColor": [0.9, 0.6, 0.05, 1]
     },
     {
-      "class": "Slider",
-      "frame": [0, 198, 72, 340],
+      "class": "MMPSlider",
       "address": "/phone/intensity",
-      "range": [0, 1],
-      "value": 0.6,
-      "color": [0.9, 0.6, 0.05],
-      "orientation": 0
+      "frame": [10, 240, 64, 310],
+      "isHorizontal": false,
+      "range": 1,
+      "color": [0.9, 0.6, 0.05, 1],
+      "highlightColor": [1, 0.8, 0.2, 1]
     },
     {
-      "class": "Label",
-      "frame": [82, 180, 230, 16],
+      "class": "MMPLabel",
+      "address": "/label/xy",
+      "frame": [86, 220, 230, 16],
       "text": "X / Y",
-      "color": [0, 0.7, 0.3],
-      "textSize": 10
+      "textSize": 10,
+      "textFontFamily": "Default",
+      "textFont": "",
+      "androidFont": "Roboto-Regular",
+      "color": [0, 0.7, 0.3, 0.7],
+      "highlightColor": [0, 0.7, 0.3, 1]
     },
     {
-      "class": "XYSlider",
-      "frame": [80, 198, 236, 340],
+      "class": "MMPXYSlider",
       "address": "/phone",
-      "color": [0, 0.55, 0.25]
+      "frame": [82, 240, 228, 310],
+      "color": [0, 0.55, 0.25, 1],
+      "highlightColor": [0, 0.9, 0.4, 1]
     }
-  ]
+  ],
+  "wearGui": []
 }

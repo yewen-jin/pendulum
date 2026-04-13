@@ -15,7 +15,7 @@ import { startPose, listVideoInputs } from './mediapipe';
 import { initDirector, tick } from './director';
 import { installDebug } from './debug';
 import { startMidi } from './midi';
-import { getBridgeUrl, installSettings } from './settings';
+import { installSettings } from './settings';
 const LS = {
   audio: 'pendulum.audio',
   cam1: 'pendulum.cam1',
@@ -87,7 +87,7 @@ async function pickDevices(): Promise<{ audioId: string; cam1Id?: string; cam2Id
 
 async function main() {
   const h = await bootHydra();
-  connectBridge(getBridgeUrl());
+  connectBridge(`ws://${location.hostname || 'localhost'}:9001`);
   initDirector(h);
   installDebug();
   installSettings();

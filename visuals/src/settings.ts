@@ -1,69 +1,101 @@
-const LS_PREFIX = 'pendulum.settings.';
+import { MODES, type ModeName } from './scenes';
 
-function load(key: string): string {
-  return localStorage.getItem(LS_PREFIX + key) ?? '';
+const LS = 'pendulum.tuning.';
+
+export const config = {
+  audioGain: load('audioGain', 4),
+  smoothing: load('smoothing', 0.8),
+  impulseDecay: load('impulseDecay', 250),
+  poseGain: load('poseGain', 40),
+  sceneOverride: loadStr('sceneOverride') as ModeName | null,
+};
+
+function load(key: string, fallback: number): number {
+  const v = localStorage.getItem(LS + key);
+  return v !== null ? Number(v) : fallback;
 }
 
-function save(key: string, value: string) {
-  if (value) localStorage.setItem(LS_PREFIX + key, value);
-  else localStorage.removeItem(LS_PREFIX + key);
+function loadStr(key: string): string | null {
+  return localStorage.getItem(LS + key) || null;
 }
 
-export function getBridgeUrl(): string {
-  const host = load('bridgeHost') || location.hostname || 'localhost';
-  const port = load('bridgePort') || '9001';
-  return `ws://${host}:${port}`;
+function save(key: string, value: number | string | null) {
+  if (value === null || value === '') localStorage.removeItem(LS + key);
+  else localStorage.setItem(LS + key, String(value));
 }
 
 export function installSettings() {
   const panel = document.getElementById('settings')!;
 
   window.addEventListener('keydown', (e) => {
-    if (e.key === 's' && !e.ctrlKey && !e.metaKey && !(e.target instanceof HTMLInputElement)) {
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
+    if (e.key === 's' && !e.ctrlKey && !e.metaKey) {
       document.body.classList.toggle('settings');
     }
   });
 
-  const autoHost = location.hostname || 'localhost';
+  const modeOpts = MODES.map(m => `<option value="${m}">${m}</option>`).join('');
 
   panel.innerHTML = `
-    <h3>connection</h3>
-    <label>Bridge WS host
-      <input id="s-host" type="text" placeholder="${autoHost} (auto)" spellcheck="false" />
+    <h3>rehearsal</h3>
+    <label>Scene
+      <select id="t-scene">
+        <option value="">(phone control)</option>
+        ${modeOpts}
+      </select>
     </label>
-    <label>Bridge WS port
-      <input id="s-port" type="text" placeholder="9001" spellcheck="false" />
+    <label>Audio gain
+      <span class="t-val" id="t-ag-v">${config.audioGain.toFixed(1)}×</span>
+      <input id="t-ag" type="range" min="1" max="10" step="0.5" value="${config.audioGain}" />
     </label>
-    <div class="s-row">
-      <button id="s-save">save &amp; reconnect</button>
-      <span id="s-status"></span>
+    <label>Smoothing α
+      <span class="t-val" id="t-sm-v">${config.smoothing.toFixed(2)}</span>
+      <input id="t-sm" type="range" min="0" max="0.99" step="0.01" value="${config.smoothing}" />
+    </label>
+    <label>Impulse decay
+      <span class="t-val" id="t-id-v">${config.impulseDecay}ms</span>
+      <input id="t-id" type="range" min="50" max="1000" step="10" value="${config.impulseDecay}" />
+    </label>
+    <label>Pose gain
+      <span class="t-val" id="t-pg-v">${config.poseGain}</span>
+      <input id="t-pg" type="range" min="5" max="100" step="1" value="${config.poseGain}" />
+    </label>
+    <div class="t-row">
+      <button id="t-reset">reset all</button>
     </div>
-    <div class="s-hint">current: <code id="s-url"></code></div>
-    <div class="s-hint">press <kbd>s</kbd> to close · <kbd>d</kbd> debug · <kbd>f</kbd> fullscreen</div>
+    <div class="t-hint">press <kbd>s</kbd> to close · <kbd>d</kbd> debug · <kbd>m</kbd> skeleton · <kbd>f</kbd> fullscreen</div>
   `;
 
-  const hostInput = panel.querySelector<HTMLInputElement>('#s-host')!;
-  const portInput = panel.querySelector<HTMLInputElement>('#s-port')!;
-  const saveBtn = panel.querySelector<HTMLButtonElement>('#s-save')!;
-  const status = panel.querySelector<HTMLSpanElement>('#s-status')!;
-  const urlDisplay = panel.querySelector<HTMLElement>('#s-url')!;
+  const scene = panel.querySelector<HTMLSelectElement>('#t-scene')!;
+  const ag = panel.querySelector<HTMLInputElement>('#t-ag')!;
+  const sm = panel.querySelector<HTMLInputElement>('#t-sm')!;
+  const id = panel.querySelector<HTMLInputElement>('#t-id')!;
+  const pg = panel.querySelector<HTMLInputElement>('#t-pg')!;
 
-  hostInput.value = load('bridgeHost');
-  portInput.value = load('bridgePort');
-  urlDisplay.textContent = getBridgeUrl();
+  scene.value = config.sceneOverride ?? '';
 
-  const updatePreview = () => {
-    const h = hostInput.value.trim() || autoHost;
-    const p = portInput.value.trim() || '9001';
-    urlDisplay.textContent = `ws://${h}:${p}`;
+  function bind(input: HTMLInputElement, key: keyof typeof config, labelId: string, fmt: (v: number) => string) {
+    input.oninput = () => {
+      const v = Number(input.value);
+      (config as any)[key] = v;
+      save(key, v);
+      panel.querySelector<HTMLSpanElement>(labelId)!.textContent = fmt(v);
+    };
+  }
+
+  bind(ag, 'audioGain', '#t-ag-v', v => `${v.toFixed(1)}×`);
+  bind(sm, 'smoothing', '#t-sm-v', v => v.toFixed(2));
+  bind(id, 'impulseDecay', '#t-id-v', v => `${v}ms`);
+  bind(pg, 'poseGain', '#t-pg-v', v => `${v}`);
+
+  scene.onchange = () => {
+    const v = scene.value as ModeName | '';
+    config.sceneOverride = v || null;
+    save('sceneOverride', v || null);
   };
-  hostInput.addEventListener('input', updatePreview);
-  portInput.addEventListener('input', updatePreview);
 
-  saveBtn.onclick = () => {
-    save('bridgeHost', hostInput.value.trim());
-    save('bridgePort', portInput.value.trim());
-    status.textContent = 'saved — reloading…';
-    setTimeout(() => location.reload(), 400);
+  panel.querySelector<HTMLButtonElement>('#t-reset')!.onclick = () => {
+    localStorage.clear();
+    location.reload();
   };
 }

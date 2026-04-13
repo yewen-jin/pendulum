@@ -12,9 +12,10 @@ type Signal = {
 
 const state = new Map<string, Signal>();
 const impulses = new Map<string, number>();  // key -> decaying 0..1
-const IMPULSE_DECAY_MS = 250;
+import { config } from './settings';
 
-export function set(key: string, value: number, alpha = 0.8) {
+export function set(key: string, value: number, alpha?: number) {
+  alpha ??= config.smoothing;
   let s = state.get(key);
   const now = performance.now();
   if (!s) {
@@ -46,8 +47,8 @@ export function pulse(key: string): number {
   const t = impulses.get(key);
   if (t === undefined) return 0;
   const age = performance.now() - t;
-  if (age >= IMPULSE_DECAY_MS) { impulses.delete(key); return 0; }
-  return 1 - age / IMPULSE_DECAY_MS;
+  if (age >= config.impulseDecay) { impulses.delete(key); return 0; }
+  return 1 - age / config.impulseDecay;
 }
 
 export function allKeys(): string[] {

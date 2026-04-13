@@ -3,6 +3,7 @@
 // derives RMS / spectral centroid / onset, and pushes them onto the bus.
 
 import { set, trigger } from './bus';
+import { config } from './settings';
 
 const FFT = 2048;
 const ONSET_ALPHA = 0.85;   // slow envelope for onset baseline
@@ -63,7 +64,7 @@ function loop() {
     fastEnv = 0;
   }
 
-  set('audio.rms', Math.min(1, rms * 4));    // boost — line-in often quiet
+  set('audio.rms', Math.min(1, rms * config.audioGain));
   set('audio.centroid', centroid, 0.85);
 }
 

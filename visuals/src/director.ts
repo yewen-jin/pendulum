@@ -6,6 +6,7 @@
 
 import { applyMode, MODES, type ModeName } from './scenes';
 import { get, pulse } from './bus';
+import { config } from './settings';
 
 let hydra: any = null;
 let current: ModeName = 'drift';
@@ -16,9 +17,8 @@ export function initDirector(h: any) {
 }
 
 export function tick() {
-  // Phone-selected mode
-  const idx = Math.round(get('phone.mode', 0));
-  const next = MODES[Math.max(0, Math.min(MODES.length - 1, idx))];
+  const next = config.sceneOverride
+    ?? MODES[Math.max(0, Math.min(MODES.length - 1, Math.round(get('phone.mode', 0))))];
   if (next !== current) {
     current = next;
     applyMode(hydra, current);

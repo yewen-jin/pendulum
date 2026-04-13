@@ -16,30 +16,34 @@
       body.debug #debug { display: block; }
 
       #settings {
-        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        font: 13px/1.6 ui-monospace, Menlo, monospace;
-        color: #8f8; background: rgba(0,0,0,.85); padding: 20px 24px;
+        position: fixed; top: 8px; right: 8px;
+        font: 12px/1.6 ui-monospace, Menlo, monospace;
+        color: #8f8; background: rgba(0,0,0,.8); padding: 14px 16px;
         border: 1px solid #0f06; border-radius: 4px;
-        z-index: 1000; display: none; min-width: 320px;
+        z-index: 1000; display: none; min-width: 260px;
       }
       body.settings #settings { display: block; }
-      #settings h3 { margin: 0 0 12px; font-size: 14px; color: #0f0; }
-      #settings label { display: block; margin-bottom: 10px; font-size: 11px; color: #8f8a; }
-      #settings input {
-        display: block; width: 100%; margin-top: 3px; padding: 4px 6px;
-        font: 13px ui-monospace, Menlo, monospace;
+      #settings h3 { margin: 0 0 10px; font-size: 13px; color: #0f0; }
+      #settings label { display: block; margin-bottom: 8px; font-size: 11px; color: #8f8a; }
+      #settings select, #settings input[type="range"] {
+        display: block; width: 100%; margin-top: 3px;
+      }
+      #settings select {
+        font: 12px ui-monospace, Menlo, monospace;
         color: #0f0; background: #111; border: 1px solid #0f03;
-        box-sizing: border-box;
+        padding: 3px 4px;
       }
-      #settings input:focus { border-color: #0f0; outline: none; }
-      #settings .s-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+      #settings input[type="range"] {
+        accent-color: #0f0; height: 4px;
+      }
+      #settings .t-val { float: right; color: #0f0; font-size: 11px; }
+      #settings .t-row { margin-top: 12px; }
       #settings button {
-        padding: 5px 14px; font: 12px ui-monospace, Menlo, monospace;
-        color: #8f8; background: #0f01; border: 1px solid #0f06; cursor: pointer;
+        padding: 4px 12px; font: 11px ui-monospace, Menlo, monospace;
+        color: #f88; background: #400a; border: 1px solid #f003; cursor: pointer;
       }
-      #settings button:hover { background: #0f03; }
-      #settings .s-hint { margin-top: 10px; font-size: 10px; color: #8f8a; }
-      #settings code { color: #0f0; }
+      #settings button:hover { background: #f002; }
+      #settings .t-hint { margin-top: 10px; font-size: 10px; color: #8f8a; }
       #settings kbd {
         padding: 1px 4px; border: 1px solid #0f04; border-radius: 2px;
         font-size: 10px; color: #0f0;

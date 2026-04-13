@@ -1,5 +1,5 @@
 {
-  "pdFile": "",
+  "pdFile": "pendulum.pd",
   "port": 9000,
   "isOrientationLandscape": false,
   "startPageIndex": 0,

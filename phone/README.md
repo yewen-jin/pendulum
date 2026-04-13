@@ -5,20 +5,22 @@ Controller layout for the performer's phone. Runs on iOS or Android via the **Mo
 ## Loading the layout
 
 1. Install **MobMuPlat** from the App Store / Play Store.
-2. Copy `pendulum.mmp` to the MobMuPlat documents folder (iTunes File Sharing on iOS, or via a file manager on Android).
+2. Copy **both** `pendulum.mmp` and `pendulum.pd` to the MobMuPlat documents folder (iTunes File Sharing on iOS, or via a file manager on Android).
 3. Open MobMuPlat → tap the document icon → select `pendulum`.
-4. The interface loads immediately; no SuperCollider or Pd patch is needed — MobMuPlat sends raw OSC.
+4. The layout loads with the embedded Pd patch (`pendulum.pd`) active. The patch routes all widget values to MobMuPlat's built-in network output via `[s toNetwork]`.
+
+> **Note on the Pd patch:** Some versions of MobMuPlat send OSC directly without a Pd patch. The included `pendulum.pd` is a safety net — it receives each widget's value via `[r <address>]` and forwards it as a formatted OSC message to `[s toNetwork]`, which MobMuPlat intercepts and sends as UDP to the configured host:port. No external Pd libraries are required; only core libpd objects are used.
 
 ## Network setup
 
 Both the phone and the ROG (visual machine) must be on the **dedicated travel router**.
 
-In MobMuPlat settings (gear icon):
-- **OSC output host**: `<rog_ip>` (the static IP assigned to the ROG on the travel router — typically `192.168.1.XXX`, check bridge startup log)
+In MobMuPlat settings (gear icon → **Settings → Network** or **OSC/Network**):
+- **OSC output host** (destination IP): `<rog_ip>` — the static IP assigned to the ROG on the travel router (typically `192.168.1.XXX`; check the bridge startup log for the exact address)
 - **OSC output port**: `9000`
 - **OSC input port**: any (not used)
 
-The bridge on the ROG listens on UDP 9000 and forwards to the browser over WS 9001.
+The bridge on the ROG listens on UDP 9000 and forwards to the browser over WS 9001. The Pd patch uses MobMuPlat's `[s toNetwork]` mechanism, so it respects whatever host:port you configure here — no IP is hardcoded in the patch.
 
 ## Layout map
 

@@ -30,9 +30,19 @@ async function bootHydra() {
 }
 
 async function pickDevices(): Promise<{ audioId: string; cam1Id?: string; cam2Id?: string }> {
-  // Need permission first to get device labels.
-  const probe = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-  probe.getTracks().forEach(t => t.stop());
+  // Need permission first to get device labels. Video may not exist (e.g. Mac
+  // mini with no built-in camera) — fall back to audio-only probe.
+  try {
+    const probe = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    probe.getTracks().forEach(t => t.stop());
+  } catch {
+    try {
+      const probe = await navigator.mediaDevices.getUserMedia({ audio: true });
+      probe.getTracks().forEach(t => t.stop());
+    } catch (e) {
+      console.warn('[setup] no audio device available', e);
+    }
+  }
 
   const audios = await listAudioInputs();
   const cams = await listVideoInputs();

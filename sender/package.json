@@ -7,6 +7,7 @@
     "list": "node -e \"import('easymidi').then(m => console.log(m.default.getInputs()))\""
   },
   "dependencies": {
+    "dotenv": "^17.4.2",
     "easymidi": "^3.1.0"
   }
 }

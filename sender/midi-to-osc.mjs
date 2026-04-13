@@ -16,6 +16,7 @@
  *   npm run list
  */
 
+import 'dotenv/config';
 import dgram from 'node:dgram';
 import easymidi from 'easymidi';
 

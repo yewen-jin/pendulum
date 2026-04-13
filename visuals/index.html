@@ -14,11 +14,42 @@
         border: 1px solid #0f06; display: none;
       }
       body.debug #debug { display: block; }
+
+      #settings {
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        font: 13px/1.6 ui-monospace, Menlo, monospace;
+        color: #8f8; background: rgba(0,0,0,.85); padding: 20px 24px;
+        border: 1px solid #0f06; border-radius: 4px;
+        z-index: 1000; display: none; min-width: 320px;
+      }
+      body.settings #settings { display: block; }
+      #settings h3 { margin: 0 0 12px; font-size: 14px; color: #0f0; }
+      #settings label { display: block; margin-bottom: 10px; font-size: 11px; color: #8f8a; }
+      #settings input {
+        display: block; width: 100%; margin-top: 3px; padding: 4px 6px;
+        font: 13px ui-monospace, Menlo, monospace;
+        color: #0f0; background: #111; border: 1px solid #0f03;
+        box-sizing: border-box;
+      }
+      #settings input:focus { border-color: #0f0; outline: none; }
+      #settings .s-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+      #settings button {
+        padding: 5px 14px; font: 12px ui-monospace, Menlo, monospace;
+        color: #8f8; background: #0f01; border: 1px solid #0f06; cursor: pointer;
+      }
+      #settings button:hover { background: #0f03; }
+      #settings .s-hint { margin-top: 10px; font-size: 10px; color: #8f8a; }
+      #settings code { color: #0f0; }
+      #settings kbd {
+        padding: 1px 4px; border: 1px solid #0f04; border-radius: 2px;
+        font-size: 10px; color: #0f0;
+      }
     </style>
   </head>
   <body>
     <canvas id="stage"></canvas>
     <div id="debug"></div>
+    <div id="settings"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

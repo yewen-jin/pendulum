@@ -8,6 +8,7 @@ const el = () => document.getElementById('debug')!;
 
 export function installDebug() {
   window.addEventListener('keydown', (e) => {
+    if (e.target instanceof HTMLInputElement) return;
     if (e.key === 'd') document.body.classList.toggle('debug');
     if (e.key === 'f') document.documentElement.requestFullscreen?.();
   });

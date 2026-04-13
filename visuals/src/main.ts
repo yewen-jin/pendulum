@@ -14,6 +14,7 @@ import { startAudio, listAudioInputs } from './audio';
 import { startPose, listVideoInputs } from './mediapipe';
 import { initDirector, tick } from './director';
 import { installDebug } from './debug';
+import { startMidi } from './midi';
 
 const BRIDGE_URL = `ws://${location.hostname || 'localhost'}:9001`;
 const LS = {
@@ -96,6 +97,7 @@ async function main() {
 
   const { audioId, cam1Id, cam2Id } = await pickDevices();
   await startAudio(audioId).catch(e => console.warn('[audio] failed', e));
+  startMidi();
   if (cam1Id) startPose(cam1Id, 'p1').catch(e => console.warn('[pose1] failed', e));
   if (cam2Id) {
     // Second performer: run the pose loop in a second instance by

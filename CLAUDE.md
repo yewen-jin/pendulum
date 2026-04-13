@@ -16,14 +16,22 @@ Live visualiser for a two-person experimental music performance (working title *
 ## Commands
 
 ```sh
-# Bridge (no build, plain ESM Node)
+# Bridge (no build, plain ESM Node) — runs on ROG
 cd bridge && npm install && npm start          # OSC:9000 → WS:9001
 cd bridge && npm run dev                       # same, with --watch
 
-# Visuals (Vite)
+# Visuals (Vite) — runs on ROG
 cd visuals && npm install
 cd visuals && npm run dev                      # http://localhost:5173
 cd visuals && npm run build                    # static output in dist/
+
+# MIDI sender — runs on Mac mini
+cd sender && npm install
+BRIDGE_HOST=<rog_ip> npm start                 # reads MIDI, sends OSC to ROG
+npm run list                                   # list available MIDI devices
+
+# Test OSC sender — for smoke testing without hardware
+node scripts/test-osc.mjs                      # synthetic signals → bridge
 ```
 
 Hotkeys in the visuals page: `d` toggles the signal-monitor overlay (essential during rehearsal for tuning OSC ranges), `f` goes fullscreen.
@@ -33,15 +41,14 @@ Hotkeys in the visuals page: `d` toggles the signal-monitor overlay (essential d
 ### Signal flow
 
 ```
-OSC (UDP 9000) ─────┐
-  Ableton (AbletonOSC / M4L)
-  Phone   (MobMuPlat)
-                    ▼
-          bridge/ (Node)       ── WS 9001 ──►  browser
-                                               ├─ Hydra render loop
-                                               ├─ bus.ts  (signal store)
-                                               ├─ audio.ts (Web Audio on Nord)
-                                               └─ mediapipe.ts (pose → bus)
+Mac mini:
+  sender/midi-to-osc.mjs ─OSC─┐   (reads MIDI controller via easymidi)
+  Phone (MobMuPlat) ────OSC────┤
+                               ▼
+ROG:                   bridge/ (Node, UDP 9000 → WS 9001) ──► browser
+  Nord ─lineIn────────────────────────────────► audio.ts (Web Audio)
+  Webcam(s) ──────────────────────────────────► mediapipe.ts (WASM)
+  MIDI controller (if USB to ROG) ────────────► midi.ts (Web MIDI, fallback)
 ```
 
 The **bus** (`visuals/src/bus.ts`) is the single source of truth. Every input — remote OSC, Web Audio analysis, MediaPipe landmarks — writes into a flat dotted-key signal store with one-pole smoothing. Impulses (MIDI note, onset, panic) are separate and decay linearly. Hydra scene code reads via `get(key)` / `pulse(key)` getters so scenes never need to be re-patched when values change.
@@ -68,12 +75,23 @@ Scenes live in `visuals/src/scenes.ts`. Vite HMR reloads on save but **Hydra's o
 
 Scene functions should only use bus getters (`get`, `pulse`) for reactive parameters — never capture raw values, or the visual will freeze.
 
+### MIDI (dual path)
+
+**Web MIDI** (`visuals/src/midi.ts`): browser reads USB MIDI directly. Works for single-machine testing (Mac mini). Writes `midi.cc.<N>` bus keys.
+
+**MIDI→OSC sender** (`sender/midi-to-osc.mjs`): runs on Mac mini for two-machine setup. Reads MIDI via `easymidi`, sends `/midi/cc/<N>` OSC to ROG bridge. Same bus keys as Web MIDI — scenes are path-agnostic.
+
+MIDI controller: **Channel 2, CC 16–31** (16 knobs). Mapping: cc16=density, cc17=color, cc18=kaleid, cc19=speed, cc20=modulation, cc21=feedback, cc22=rotation, cc23=zoom, cc24=glitch, cc25=brightness, cc26=pixelate, cc27=hue, cc28–31=spare.
+
 ## Known v1 gaps
 
-- Second performer's camera is plumbed in the setup UI but the pose loop only tracks one at a time. Needs a per-tag landmarker instance.
-- No FaceLandmarker yet (blendshapes). Add in `mediapipe.ts` alongside the pose code; write blendshape scores to `face.p1.<name>` keys.
-- No bundled M4L device — setup relies on AbletonOSC or a Max patch the performer builds (spec in `docs/abletonosc.md`).
-- OBS is used for recording; no in-browser MediaRecorder fallback.
+- MediaPipe pose/face: code exists but untested (no camera on Mac mini test machine). Needs ROG webcam.
+- MobMuPlat phone layout: not designed. Needs scene switch + intensity slider + panic button at minimum.
+- AbletonOSC: partially installed on Mac mini but non-functional (subscription logic not written). Low priority — MIDI sender covers most needs.
+- Second performer camera: stubbed in UI, not functional in pose loop.
+- FaceLandmarker: not wired. Add alongside PoseLandmarker when ready.
+- M4L device: `.maxpat` written but non-functional (`oscformat` missing in user's Max). Superseded by `sender/midi-to-osc.mjs`.
+- OBS recording: user has OBS experience; no additional code needed, just config.
 
 ## Conventions
 

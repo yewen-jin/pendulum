@@ -32,3 +32,37 @@ Each entry is a level-2 heading with ISO date + topic. Inside, four fixed bullet
 - User runs bring-up on ROG per `docs/bringup.md` and reports what they see (plus console errors if any)
 - Based on that: either tune reactivity (scene-dev) or move to M4L/AbletonOSC wiring (hw-integrator)
 - MobMuPlat layout as a parallel track once audio path is confirmed
+
+## 2026-04-13 — Signal path validated + MIDI CC mapping
+
+**Decided:**
+- Dropped M4L oscformat approach — Max bundled with user's Ableton lacks `oscformat`
+- WebMIDI in browser for single-machine testing; `sender/midi-to-osc.mjs` (Node script on Mac mini) for two-machine performance
+- MIDI controller uses Channel 2, CC 16–31 (16 knobs)
+- CC mapping: cc16=density, cc17=color, cc18=kaleid, cc19=speed, cc20=modulation, cc21=feedback, cc22=rotation, cc23=zoom, cc24=glitch, cc25=brightness, cc26=pixelate, cc27=hue, cc28-31=spare
+- User confirmed "手感还行" — signal→visual reactivity validated on Mac mini
+
+**Built:**
+- `visuals/src/midi.ts` — Web MIDI API, reads all controllers, writes to `midi.cc.<N>` bus keys
+- `sender/` directory with `midi-to-osc.mjs` — runs on Mac mini, reads MIDI via easymidi, sends OSC to ROG bridge. Zero M4L dependency.
+- `ableton/pendulum-midi.maxpat` — written but NOT usable (oscformat missing). Kept as reference.
+- `scripts/test-osc.mjs` — synthetic OSC sender for smoke tests (created by hw-integrator subagent)
+- `docs/bringup.md` — bring-up checklist (created by hw-integrator subagent)
+- All 4 Hydra scenes (`drift`, `debris`, `signalLoss`, `reentry`) wired to CC 16–31 with per-scene parameter mapping
+- Bug fixes: `vite.config.ts` added `global: globalThis` (hydra-synth CJS compat); `main.ts` camera probe fallback for Mac mini (no webcam)
+
+**Open questions:**
+- AbletonOSC still partially installed on Mac mini (user added config.py manually which won't work) — clean up or revisit later for transport/track data
+- MediaPipe not tested yet (skipped intentionally — no camera on Mac mini)
+- Face blendshapes not wired
+- Second pose tracker stubbed but not functional
+- MobMuPlat layout not designed
+- Scene aesthetic needs iteration with user once on projector — current scenes are functional placeholders
+- Nord audio analysis not tested with actual Nord (only verified with mic/line-in)
+
+**Next:**
+- Test on ROG (two-machine setup): bridge on ROG, sender on Mac mini, verify OSC over LAN
+- MediaPipe pose tracking once ROG webcam available
+- MobMuPlat layout design (scene switch + intensity + panic)
+- Scene aesthetic iteration — user keywords: post-apocalyptic, spaceship, post-war, on escape
+- OBS recording setup on ROG

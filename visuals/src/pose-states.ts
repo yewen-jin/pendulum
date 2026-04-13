@@ -1,4 +1,5 @@
 import { set } from './bus';
+import { config } from './settings';
 
 export const POSE_STATES = [
   'neutral', 'compact', 'expansive', 'leftReach', 'rightReach', 'elevated',
@@ -47,9 +48,13 @@ export function updatePoseState(landmarks: { x: number; y: number }[]) {
   const noseToLeft = Math.hypot(nose.x - lWrist.x, nose.y - lWrist.y);
   const noseToRight = Math.hypot(nose.x - rWrist.x, nose.y - rWrist.y);
 
-  set('pose.handDist', Math.min(1, handDist * 1.5), 0.6);
-  set('pose.noseToLeft', Math.min(1, noseToLeft * 1.5), 0.6);
-  set('pose.noseToRight', Math.min(1, noseToRight * 1.5), 0.6);
+  if (config.poseTriangle) {
+    set('pose.handDist', Math.min(1, handDist * 1.5), 0.6);
+    set('pose.noseToLeft', Math.min(1, noseToLeft * 1.5), 0.6);
+    set('pose.noseToRight', Math.min(1, noseToRight * 1.5), 0.6);
+  }
+
+  if (!config.poseStates) return;
 
   const next = classify(handDist, noseToLeft, noseToRight, lWrist.y, rWrist.y, nose.y);
 

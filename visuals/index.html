@@ -48,6 +48,27 @@
         padding: 1px 4px; border: 1px solid #0f04; border-radius: 2px;
         font-size: 10px; color: #0f0;
       }
+      /* Collapsible posture section */
+      #settings .t-collapse { margin-top: 12px; border-top: 1px solid #0f03; padding-top: 8px; }
+      #settings .t-collapse-header {
+        cursor: pointer; color: #0f0; font-size: 12px; font-weight: bold;
+        user-select: none; padding: 2px 0;
+      }
+      #settings .t-collapse-header:hover { color: #5f5; }
+      #settings .t-collapse-body { display: none; padding-top: 6px; }
+      #settings .t-group-label {
+        font-size: 10px; color: #8f8a; margin-top: 8px; margin-bottom: 3px;
+        text-transform: uppercase; letter-spacing: 0.05em;
+      }
+      #settings .t-group-label:first-child { margin-top: 0; }
+      #settings label.t-toggle {
+        display: flex; align-items: center; gap: 6px;
+        margin-bottom: 4px; font-size: 11px; color: #8f8; cursor: pointer;
+      }
+      #settings label.t-toggle input[type="checkbox"] {
+        width: auto; accent-color: #0f0; cursor: pointer;
+        margin: 0;
+      }
     </style>
   </head>
   <body>

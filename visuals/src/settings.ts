@@ -2,12 +2,26 @@ import { MODES, type ModeName } from './scenes';
 
 const LS = 'pendulum.tuning.';
 
+function loadBool(key: string, fallback: boolean): boolean {
+  const v = localStorage.getItem(LS + key);
+  return v !== null ? v === 'true' : fallback;
+}
+
 export const config = {
   audioGain: load('audioGain', 4),
   smoothing: load('smoothing', 0.8),
   impulseDecay: load('impulseDecay', 250),
   poseGain: load('poseGain', 40),
   sceneOverride: loadStr('sceneOverride') as ModeName | null,
+  // Posture toggles
+  poseStates: loadBool('poseStates', true),
+  poseContinuous: loadBool('poseContinuous', true),
+  poseCentroid: loadBool('poseCentroid', true),
+  faceMouth: loadBool('faceMouth', true),
+  faceBrows: loadBool('faceBrows', true),
+  faceEyes: loadBool('faceEyes', true),
+  faceSmile: loadBool('faceSmile', true),
+  poseTriangle: loadBool('poseTriangle', true),
 };
 
 function load(key: string, fallback: number): number {
@@ -63,6 +77,22 @@ export function installSettings() {
     <div class="t-row">
       <button id="t-reset">reset all</button>
     </div>
+    <div class="t-collapse" id="t-posture">
+      <div class="t-collapse-header" id="t-posture-hdr">&#9654; Posture</div>
+      <div class="t-collapse-body" id="t-posture-body">
+        <div class="t-group-label">Pose tracking</div>
+        <label class="t-toggle"><input type="checkbox" id="t-poseStates" ${config.poseStates ? 'checked' : ''} /> Pose states</label>
+        <label class="t-toggle"><input type="checkbox" id="t-poseContinuous" ${config.poseContinuous ? 'checked' : ''} /> Continuous motion</label>
+        <label class="t-toggle"><input type="checkbox" id="t-poseCentroid" ${config.poseCentroid ? 'checked' : ''} /> Body centroid</label>
+        <div class="t-group-label">Face tracking</div>
+        <label class="t-toggle"><input type="checkbox" id="t-faceMouth" ${config.faceMouth ? 'checked' : ''} /> Mouth</label>
+        <label class="t-toggle"><input type="checkbox" id="t-faceBrows" ${config.faceBrows ? 'checked' : ''} /> Brows</label>
+        <label class="t-toggle"><input type="checkbox" id="t-faceEyes" ${config.faceEyes ? 'checked' : ''} /> Eyes</label>
+        <label class="t-toggle"><input type="checkbox" id="t-faceSmile" ${config.faceSmile ? 'checked' : ''} /> Smile</label>
+        <div class="t-group-label">Raw data</div>
+        <label class="t-toggle"><input type="checkbox" id="t-poseTriangle" ${config.poseTriangle ? 'checked' : ''} /> Triangle distances</label>
+      </div>
+    </div>
     <div class="t-hint">press <kbd>s</kbd> to close · <kbd>d</kbd> debug · <kbd>m</kbd> skeleton · <kbd>f</kbd> fullscreen</div>
   `;
 
@@ -98,4 +128,27 @@ export function installSettings() {
     localStorage.clear();
     location.reload();
   };
+
+  // ---- Collapsible Posture section ----
+  const postureHdr = panel.querySelector<HTMLDivElement>('#t-posture-hdr')!;
+  const postureBody = panel.querySelector<HTMLDivElement>('#t-posture-body')!;
+  postureHdr.onclick = () => {
+    const open = postureBody.style.display !== 'none';
+    postureBody.style.display = open ? 'none' : 'block';
+    postureHdr.innerHTML = open ? '&#9654; Posture' : '&#9660; Posture';
+  };
+
+  // Posture toggles
+  const toggleKeys: (keyof typeof config)[] = [
+    'poseStates', 'poseContinuous', 'poseCentroid',
+    'faceMouth', 'faceBrows', 'faceEyes', 'faceSmile',
+    'poseTriangle',
+  ];
+  for (const key of toggleKeys) {
+    const cb = panel.querySelector<HTMLInputElement>(`#t-${key}`)!;
+    cb.onchange = () => {
+      (config as any)[key] = cb.checked;
+      save(key, cb.checked ? 'true' : 'false');
+    };
+  }
 }

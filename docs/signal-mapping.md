@@ -72,6 +72,34 @@ Triangle model: 3 distances (nose↔left wrist, nose↔right wrist, left wrist�
 | Signal | Range | Effect |
 |---|---|---|
 | `phone.mode` | int 0–3 | Scene selection: 0=drift, 1=debris, 2=signalLoss, 3=reentry |
-| `phone.intensity` | 0–1 | Global intensity multiplier (crosshair mix in drift) |
-| `phone.x` / `phone.y` | 0–1 | XY pad — available but not wired to scenes yet |
+| `phone.intensity` | 0–1 | Global energy envelope — scales brightness, warp depth, and scroll speed across all 4 scenes. Low (0.2–0.4) = gentle; high (0.8–1.0) = dramatic. |
+| `phone.x` | 0–1 | XY pad horizontal — color temperature. 0=cool/blue, 1=warm/red. Shifts red channel up and blue channel down. Applied to all 4 scenes. |
+| `phone.y` | 0–1 | XY pad vertical — density and zoom. 0=sparse/zoomed-out, 1=dense/zoomed-in. Adds to noise scale, voronoi count, osc frequency, and global scale across all 4 scenes. |
 | `phone.panic` | impulse | Blackout (~250ms CSS overlay) |
+
+### phone.intensity — per-scene detail
+
+| Scene | Effect |
+|---|---|
+| `drift` | Lowers threshold (more stars visible), boosts brightness, speeds up voronoi scroll. Crosshair mix scales with intensity (0.35×). |
+| `debris` | Increases modulation warp depth, speeds up vertical scroll. |
+| `signalLoss` | Lowers threshold (more static), amplifies modulation smear, raises static noise mix. |
+| `reentry` | Increases warp depth, speeds up vertical scroll. |
+
+### phone.x — per-scene detail
+
+| Scene | Color effect (x=0 cool → x=1 warm) |
+|---|---|
+| `drift` | Red channel +0.3, blue channel −0.35 on noise layer |
+| `debris` | Osc color overlay: red +0.15, blue −0.30 |
+| `signalLoss` | Red channel +0.2, blue channel −0.12 |
+| `reentry` | Red +0.15, green −0.1, blue −0.08 on gradient |
+
+### phone.y — per-scene detail
+
+| Scene | Density/zoom effect (y=0 sparse → y=1 dense) |
+|---|---|
+| `drift` | Noise scale +6, global scale +0.25 |
+| `debris` | Voronoi count +30, global scale +0.2 |
+| `signalLoss` | Osc frequency +60, pixelation resolution −600 (more pixelated) |
+| `reentry` | Shimmer noise scale +8, global scale +0.25 |

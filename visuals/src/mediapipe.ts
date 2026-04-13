@@ -189,12 +189,16 @@ function loop() {
   for (const p of lm) cx += p.x;
   cx /= lm.length;
 
-  set(`pose.${performerTag}.motion`, motion);
-  set(`pose.${performerTag}.openness`, openness);
-  set(`pose.${performerTag}.cx`, cx);
+  if (config.poseContinuous) {
+    set(`pose.${performerTag}.motion`, motion);
+    set(`pose.${performerTag}.openness`, openness);
+    set('pose.motion', motion);
+    set('pose.openness', openness);
+  }
 
-  set('pose.motion', motion);
-  set('pose.openness', openness);
+  if (config.poseCentroid) {
+    set(`pose.${performerTag}.cx`, cx);
+  }
 
   updatePoseState(lm);
 }
@@ -217,19 +221,25 @@ function processFaceBlendshapes(categories: { categoryName: string; score: numbe
   const smile = ((scores['mouthSmileLeft'] ?? 0) + (scores['mouthSmileRight'] ?? 0)) * 0.5;
   const browDown = ((scores['browDownLeft'] ?? 0) + (scores['browDownRight'] ?? 0)) * 0.5;
 
-  // Per-performer keys
-  set(`face.${performerTag}.mouthOpen`, mouthOpen);
-  set(`face.${performerTag}.browUp`, browUp);
-  set(`face.${performerTag}.eyeSquint`, eyeSquint);
-  set(`face.${performerTag}.smile`, smile);
-  set(`face.${performerTag}.browDown`, browDown);
-
-  // Aggregate keys (same as performer for single-performer v1)
-  set('face.mouthOpen', mouthOpen);
-  set('face.browUp', browUp);
-  set('face.eyeSquint', eyeSquint);
-  set('face.smile', smile);
-  set('face.browDown', browDown);
+  // Per-performer + aggregate keys, gated by posture toggles
+  if (config.faceMouth) {
+    set(`face.${performerTag}.mouthOpen`, mouthOpen);
+    set('face.mouthOpen', mouthOpen);
+  }
+  if (config.faceBrows) {
+    set(`face.${performerTag}.browUp`, browUp);
+    set(`face.${performerTag}.browDown`, browDown);
+    set('face.browUp', browUp);
+    set('face.browDown', browDown);
+  }
+  if (config.faceEyes) {
+    set(`face.${performerTag}.eyeSquint`, eyeSquint);
+    set('face.eyeSquint', eyeSquint);
+  }
+  if (config.faceSmile) {
+    set(`face.${performerTag}.smile`, smile);
+    set('face.smile', smile);
+  }
 }
 
 export async function listVideoInputs(): Promise<MediaDeviceInfo[]> {

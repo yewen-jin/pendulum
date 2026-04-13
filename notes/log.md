@@ -220,3 +220,33 @@ Each entry is a level-2 heading with ISO date + topic. Inside, four fixed bullet
 - Design face→visual interaction model
 - Test MobMuPlat on phone
 - Test FaceLandmarker on ROG (check `face.*` in debug overlay)
+
+## 2026-04-13 — MobMuPlat PD patch routing
+
+**Decided:**
+- MobMuPlat may require a PD patch (`pendulum.pd`) to route widget values as OSC — not all MobMuPlat app versions auto-send OSC without explicit routing
+- PD patch acts as safety net using only core libpd objects, no external dependencies
+- Five widget addresses routed: `/phone/panic` (bang), `/phone/mode` (float), `/phone/intensity` (float), `/phone/x` (float), `/phone/y` (float)
+- XY pad handled as two separate receivers since MobMuPlat sends x and y on distinct paths
+
+**Built:**
+- `phone/pendulum.pd` — new PD patch:
+  - Five `[r address]` receivers (one per widget path)
+  - Panic path uses `[t b]` to forward bang arglessly
+  - Mode, intensity, x, y paths use `[msg]` to format values
+  - All paths converge to single `[s toNetwork]` sender
+  - Clean, minimal patch with only standard Pd objects
+- `phone/pendulum.mmp` — updated MobMuPlat config with `"pdFile": "pendulum.pd"` so app loads patch on startup
+- `phone/README.md` — added PD patch loading instructions, network config section explaining `[s toNetwork]`, and troubleshooting steps
+
+**Open questions:**
+- MobMuPlat layout and PD patch untested on actual phone
+- Face blendshape → scene interaction design still pending
+- Second performer camera still stubbed
+- Scene aesthetic refinement under projector needed
+
+**Next:**
+- Test MobMuPlat + PD patch on actual phone (verify all 5 widget paths arrive at bridge)
+- Scene aesthetic iteration on projector
+- Face → visual interaction design
+- Second performer camera support if performance time allows

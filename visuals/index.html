@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>pendulum</title>
+    <style>
+      html, body { margin: 0; background: #000; overflow: hidden; height: 100%; }
+      canvas#stage { display: block; width: 100vw; height: 100vh; }
+      #debug {
+        position: fixed; top: 8px; left: 8px;
+        font: 11px/1.35 ui-monospace, Menlo, monospace;
+        color: #8f8; background: rgba(0,0,0,.45); padding: 6px 8px;
+        max-width: 36ch; pointer-events: none; white-space: pre;
+        border: 1px solid #0f06; display: none;
+      }
+      body.debug #debug { display: block; }
+    </style>
+  </head>
+  <body>
+    <canvas id="stage"></canvas>
+    <div id="debug"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

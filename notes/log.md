@@ -155,6 +155,35 @@ Each entry is a level-2 heading with ISO date + topic. Inside, four fixed bullet
 - MobMuPlat layout design
 - Scene aesthetic iteration under projector
 
-- MediaPipe pose tracking on ROG with webcam
-- MobMuPlat layout design
+## 2026-04-13 — Rehearsal tuning panel + MediaPipe skeleton overlay + two-machine validation
+
+**Decided:**
+- Web settings panel for bridge connection was redundant — `location.hostname` auto-derives the correct WS URL. Repurposed into a rehearsal tuning panel instead.
+- Sender `.env` requires restart after editing (dotenv reads once at startup). CLI env vars override `.env` values.
+- Two-machine setup confirmed working: MIDI from Mac mini sender → ROG bridge over LAN, plus direct audio into ROG.
+- MediaPipe code was already built but never tested. User now has webcam on ROG ready to test.
+
+**Built:**
+- Repurposed settings panel (`s` key) into **rehearsal tuning panel** with live sliders:
+  - Scene override dropdown (bypass phone control, pick scene directly)
+  - Audio gain slider (1×–10×, was hardcoded 4×) — wired into `audio.ts`
+  - Smoothing α slider (0–0.99, was hardcoded 0.8) — wired into `bus.ts` default
+  - Impulse decay slider (50ms–1000ms, was hardcoded 250ms) — wired into `bus.ts`
+  - Pose gain slider (5–100, was hardcoded 40) — wired into `mediapipe.ts`
+- All tuning values take effect immediately (no reload), persist in localStorage via `config` object
+- **Reset all** button in settings panel — clears all localStorage (tuning + device selection), reloads page, re-shows setup screen
+- **MediaPipe skeleton overlay** (`m` key) — shows camera feed with green skeleton (33 landmarks + connections) drawn in bottom-right corner. Useful for verifying pose tracking is working.
+- Removed bridge URL from settings panel, restored auto-derived `ws://location.hostname:9001` in `main.ts`
+- Updated hotkey hints in settings panel: `s` close, `d` debug, `m` skeleton, `f` fullscreen
+- Guarded `m` key from firing while typing in input fields
+
+**Open questions:**
+- MediaPipe pose tracking not yet confirmed working — user has webcam, needs to select camera in setup screen and check `pose.*` signals in debug overlay
+- Does the pose gain default (40) feel right, or does it need tuning once camera is live?
+- Should the skeleton overlay also show derived values (motion, openness) as text?
+
+**Next:**
+- Confirm MediaPipe tracking works on ROG with webcam (check `pose.motion`, `pose.openness` in debug overlay)
+- MobMuPlat phone layout design (scene switch + intensity + panic)
 - Scene aesthetic iteration under projector
+- Consider adding more tuning params to rehearsal panel as needed

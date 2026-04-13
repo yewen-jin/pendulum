@@ -1,6 +1,7 @@
 import { FilesetResolver, PoseLandmarker, FaceLandmarker } from '@mediapipe/tasks-vision';
 import { set } from './bus';
 import { config } from './settings';
+import { updatePoseState } from './pose-states';
 
 let landmarker: PoseLandmarker | null = null;
 let faceLandmarker: FaceLandmarker | null = null;
@@ -194,6 +195,8 @@ function loop() {
 
   set('pose.motion', motion);
   set('pose.openness', openness);
+
+  updatePoseState(lm);
 }
 
 function processFaceBlendshapes(categories: { categoryName: string; score: number }[]) {

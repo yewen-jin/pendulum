@@ -187,3 +187,36 @@ Each entry is a level-2 heading with ISO date + topic. Inside, four fixed bullet
 - MobMuPlat phone layout design (scene switch + intensity + panic)
 - Scene aesthetic iteration under projector
 - Consider adding more tuning params to rehearsal panel as needed
+
+## 2026-04-13 — Discrete pose states + FaceLandmarker + MobMuPlat layout
+
+**Decided:**
+- Replace continuous jittery pose signals with **discrete state machine** based on a triangle model (nose, left wrist, right wrist). Three distances define the triangle; classification maps to named states.
+- 6 pose states: neutral, compact, expansive, leftReach, rightReach, elevated
+- States have debounced transitions (4-frame debounce) with eased crossfade (600ms ease-in-out-quad) to prevent visual jitter
+- Per-state bus weights (0→1) allow scenes to blend smoothly between states
+- Facial model stays continuous/nuanced — different interaction approach to be designed separately
+- Raw continuous pose signals (`pose.motion`, `pose.openness`) still written alongside states for backwards compat
+
+**Built:**
+- `visuals/src/pose-states.ts` — new module: triangle distance calculation, state classifier with hysteresis, eased transition engine, per-state weight bus keys
+- Wired `updatePoseState()` into mediapipe.ts loop — runs every frame after pose detection
+- Bus keys: `pose.state.neutral`, `pose.state.compact`, `pose.state.expansive`, `pose.state.leftReach`, `pose.state.rightReach`, `pose.state.elevated` (each 0→1 with transitions), plus `pose.handDist`, `pose.noseToLeft`, `pose.noseToRight` (raw triangle)
+- **FaceLandmarker** (feature-builder agent): wired alongside PoseLandmarker on same camera/frame. 5 face signals: `face.mouthOpen`, `face.browUp`, `face.eyeSquint`, `face.smile`, `face.browDown`. Graceful fallback if face init fails. Cyan face dots in skeleton overlay (`m` key).
+- **MobMuPlat layout** (hw-integrator agent): `phone/pendulum.mmp` with panic button (top, red), scene selector (4-way), intensity slider (left, vertical), XY pad (right). Dark theme with green/amber accents. `phone/README.md` setup guide. Docs updated.
+- MediaPipe pose tracking confirmed working on ROG with webcam
+- Build passes clean
+
+**Open questions:**
+- Are the pose state classification thresholds right? User needs to test poses and report which states trigger correctly
+- How should scenes respond to pose states? Each state could map to distinct visual character (compact=focused, expansive=wide, elevated=energetic)
+- What nuanced interactions should face blendshapes drive? (deferred — user wants to think about this)
+- Transition duration (600ms) — does it feel right or should it be tunable via settings panel?
+- MobMuPlat layout untested on actual phone — need to verify widget behavior
+
+**Next:**
+- User tests pose state classification, reports which states feel right
+- Wire pose states into scenes (scene-dev agent)
+- Design face→visual interaction model
+- Test MobMuPlat on phone
+- Test FaceLandmarker on ROG (check `face.*` in debug overlay)

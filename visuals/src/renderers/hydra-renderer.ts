@@ -25,9 +25,14 @@ export class HydraRenderer implements Renderer {
   }
 
   destroy(): void {
-    // Hydra lacks a clean teardown API — hush clears outputs,
-    // then we release the WebGL context for canvas reuse
-    this.h?.hush();
+    // Hydra lacks a clean teardown API: the raf-loop handle is never
+    // stored so we can't call .stop(). Neuter the tick function so
+    // the orphaned loop becomes a harmless no-op, then clear outputs
+    // and release the WebGL context for canvas reuse.
+    if (this.h) {
+      this.h.tick = () => {};
+      this.h.hush();
+    }
     const gl = this.canvas?.getContext('webgl');
     gl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.h = null;

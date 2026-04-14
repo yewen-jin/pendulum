@@ -31,9 +31,10 @@ export function tick() {
   if (next && next !== current) {
     const nextRenderer = rendererForScene(next);
     if (nextRenderer && nextRenderer !== activeRenderer) {
-      // Cross-renderer switch — destroy old, init new
-      // TODO: Phase 2 — handle async init (loading state)
+      // Cross-renderer switch: destroy old, null out to stop tick,
+      // then init new renderer and apply the scene
       activeRenderer?.destroy();
+      activeRenderer = null;
       nextRenderer.init(canvas!).then(() => {
         activeRenderer = nextRenderer;
         activeRenderer.applyScene(next);

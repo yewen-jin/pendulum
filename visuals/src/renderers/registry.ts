@@ -1,5 +1,6 @@
 import type { Renderer } from './types';
 import { HydraRenderer } from './hydra-renderer';
+import { ThreeRenderer } from './three-renderer';
 
 const renderers: Renderer[] = [];
 const sceneMap = new Map<string, Renderer>();
@@ -20,6 +21,7 @@ export function rendererForScene(scene: string): Renderer | undefined {
 
 export function registerDefaults(): void {
   registerRenderer(new HydraRenderer());
+  registerRenderer(new ThreeRenderer());
   SCENES.length = 0;
   SCENES.push(...renderers.flatMap(r => r.scenes));
 }

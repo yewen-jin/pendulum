@@ -56,6 +56,19 @@ function render() {
   _render();
 }
 
+// Prefixes that get performer sub-grouping (p1/p2/aggregate)
+const PERFORMER_GROUPED = new Set(['pose', 'face']);
+
+// Detect performer tag from a key like "pose.p1.motion" or "face.p2.browUp"
+// Returns 'p1', 'p2', or null (aggregate)
+function performerTag(key: string): string | null {
+  const parts = key.split('.');
+  if (parts.length >= 2 && (parts[1] === 'p1' || parts[1] === 'p2')) return parts[1];
+  // pose.state.p1.compact — tag is at index 2
+  if (parts.length >= 3 && (parts[2] === 'p1' || parts[2] === 'p2')) return parts[2];
+  return null;
+}
+
 function _render() {
   const keys = allKeys();
 
@@ -75,12 +88,8 @@ function _render() {
   // Mode line — always visible, outside any section
   parts.push(`<span style="color:#8f8">mode: ${currentMode()}</span>`);
 
-  // Render known categories in fixed order, then any unknown ones
-  const renderedPrefixes = new Set<string>();
-
   const allCats = [
     ...CATEGORIES,
-    // Append any unknown prefixes as fallback "other" category
     ...Object.keys(buckets)
       .filter(p => !knownPrefixes.has(p))
       .map(p => ({ prefix: p, label: p.toUpperCase(), color: '#8f8' })),
@@ -90,29 +99,56 @@ function _render() {
     const { prefix, label, color } = cat;
     const catKeys = buckets[prefix];
     if (!catKeys || catKeys.length === 0) continue;
-    renderedPrefixes.add(prefix);
 
     const isCollapsed = !!collapsed[prefix];
     const chevron = isCollapsed ? '▶' : '▼';
 
-    // Section header — clickable via data-prefix
     parts.push(
       `<span class="dbg-header" data-prefix="${prefix}" style="color:${color};cursor:pointer;user-select:none">${chevron} ${label} (${catKeys.length})</span>`
     );
 
     if (!isCollapsed) {
-      for (const k of catKeys) {
-        const v = get(k);
-        const r = raw(k);
-        const shortKey = k.padEnd(22);
-        parts.push(
-          `  <span style="color:#6a6">${shortKey}</span> <span style="color:${color}">${bar(v)}</span> <span style="color:#ccc">${v.toFixed(2)}</span> <span style="color:#555">(${r.toFixed(2)})</span>`
-        );
+      if (PERFORMER_GROUPED.has(prefix)) {
+        // Sub-group by performer: aggregate first, then p1, then p2
+        const agg: string[] = [];
+        const p1: string[] = [];
+        const p2: string[] = [];
+        for (const k of catKeys) {
+          const tag = performerTag(k);
+          if (tag === 'p1') p1.push(k);
+          else if (tag === 'p2') p2.push(k);
+          else agg.push(k);
+        }
+        const subGroups: [string, string[], string][] = [
+          ['aggregate', agg, '#888'],
+          ['p1', p1, '#8f8'],
+          ['p2', p2, '#8cf'],
+        ];
+        for (const [subLabel, subKeys, subColor] of subGroups) {
+          if (subKeys.length === 0) continue;
+          parts.push(`  <span style="color:${subColor};font-size:10px">── ${subLabel} ──</span>`);
+          for (const k of subKeys) {
+            renderSignalLine(parts, k, color);
+          }
+        }
+      } else {
+        for (const k of catKeys) {
+          renderSignalLine(parts, k, color);
+        }
       }
     }
 
-    parts.push(''); // blank line between sections
+    parts.push('');
   }
 
   el().innerHTML = parts.join('\n');
+}
+
+function renderSignalLine(parts: string[], k: string, color: string) {
+  const v = get(k);
+  const r = raw(k);
+  const shortKey = k.padEnd(28);
+  parts.push(
+    `  <span style="color:#6a6">${shortKey}</span> <span style="color:${color}">${bar(v)}</span> <span style="color:#ccc">${v.toFixed(2)}</span> <span style="color:#555">(${r.toFixed(2)})</span>`
+  );
 }

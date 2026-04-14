@@ -7,11 +7,12 @@
       html, body { margin: 0; background: #000; overflow: hidden; height: 100%; }
       canvas#stage { display: block; width: 100vw; height: 100vh; }
       #debug {
-        position: fixed; top: 8px; left: 8px;
+        position: fixed; top: 8px; left: 8px; bottom: 8px;
         font: 11px/1.45 ui-monospace, Menlo, monospace;
         color: #8f8; background: rgba(0,0,0,.55); padding: 6px 8px;
         max-width: 52ch; pointer-events: none; white-space: pre;
         border: 1px solid #0f06; display: none;
+        overflow-y: auto; overflow-x: hidden;
       }
       body.debug #debug { display: block; }
       /* Section headers need clicks; rest stays non-interactive */

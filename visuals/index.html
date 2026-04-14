@@ -8,12 +8,14 @@
       canvas#stage { display: block; width: 100vw; height: 100vh; }
       #debug {
         position: fixed; top: 8px; left: 8px;
-        font: 11px/1.35 ui-monospace, Menlo, monospace;
-        color: #8f8; background: rgba(0,0,0,.45); padding: 6px 8px;
-        max-width: 36ch; pointer-events: none; white-space: pre;
+        font: 11px/1.45 ui-monospace, Menlo, monospace;
+        color: #8f8; background: rgba(0,0,0,.55); padding: 6px 8px;
+        max-width: 52ch; pointer-events: none; white-space: pre;
         border: 1px solid #0f06; display: none;
       }
       body.debug #debug { display: block; }
+      /* Section headers need clicks; rest stays non-interactive */
+      #debug .dbg-header { pointer-events: auto; }
 
       #settings {
         position: fixed; top: 8px; right: 8px;

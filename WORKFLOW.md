@@ -58,6 +58,7 @@ Examples:
 - [x] Skeleton debug overlay (m key) with face landmark dots
 - [x] Docs: osc-addresses, bringup, abletonosc, signal-mapping
 - [x] Two-machine LAN validated (bridge on ROG + sender on Mac mini)
+- [x] Multi-renderer Phase 1: Renderer interface, HydraRenderer wrapper, scene registry
 
 ---
 
@@ -67,7 +68,8 @@ Examples:
 
 - [x] **Two-camera support** — PoseTracker class, per-performer pose states, two skeleton panels, aggregate bus keys (MAX). `2ab69de`
 - [x] **Debug UI grouping** — color-coded collapsible sections: AUDIO/POSE/FACE/MIDI/PHONE. `259b602`
-- [ ] **Multi-renderer architecture** — support Three.js, p5.js alongside Hydra. Each mode declares its renderer. Bus stays renderer-agnostic. Director manages renderer lifecycle. **Needs architecture plan before code** — see `docs/multi-renderer.md`.
+- [x] **Multi-renderer Phase 1** — Renderer interface + HydraRenderer wrapper + registry. Director uses Renderer instead of raw Hydra. `7316e3e`
+- [ ] **Multi-renderer Phase 2** — Add Three.js renderer + one test scene. Verify renderer switching works. See `docs/multi-renderer.md`.
 
 ### Priority 1 — Rehearsal-ready
 

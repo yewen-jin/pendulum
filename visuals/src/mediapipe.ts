@@ -1,18 +1,7 @@
 import { FilesetResolver, PoseLandmarker, FaceLandmarker } from '@mediapipe/tasks-vision';
-import { set } from './bus';
+import { set, get } from './bus';
 import { config } from './settings';
-import { updatePoseState } from './pose-states';
-
-let landmarker: PoseLandmarker | null = null;
-let faceLandmarker: FaceLandmarker | null = null;
-let video: HTMLVideoElement | null = null;
-let raf = 0;
-let prevLandmarks: { x: number; y: number }[] | null = null;
-let performerTag = 'p1';
-
-let debugCanvas: HTMLCanvasElement | null = null;
-let debugCtx: CanvasRenderingContext2D | null = null;
-let showSkeleton = false;
+import { PoseStateTracker, POSE_STATES } from './pose-states';
 
 // Upper-body landmark count: indices 0–16 cover nose, eyes, ears,
 // shoulders, elbows, and wrists — everything visible in chest-up framing.
@@ -42,210 +31,377 @@ const CONNECTIONS = [
   [28,30],[30,32],[32,28],[15,17],[15,19],[15,21],[16,18],[16,20],[16,22],
 ];
 
-function initDebugOverlay() {
-  const wrap = document.createElement('div');
-  wrap.id = 'pose-debug';
-  wrap.style.cssText = 'position:fixed;bottom:8px;right:8px;display:none;border:1px solid #0f06;border-radius:4px;overflow:hidden;';
+// Aggregate face signal keys (no performer tag) that scenes read
+const FACE_AGG_KEYS = ['face.mouthOpen', 'face.browUp', 'face.browDown', 'face.eyeSquint', 'face.smile'] as const;
 
-  debugCanvas = document.createElement('canvas');
-  debugCanvas.width = 320;
-  debugCanvas.height = 240;
-  debugCanvas.style.cssText = 'display:block;background:#000;';
-  debugCtx = debugCanvas.getContext('2d')!;
+// ---- Module-level registry of active trackers ----
+const trackers = new Map<string, PoseTracker>();
+let showSkeleton = false;
+let debugContainer: HTMLDivElement | null = null;
+let keyListenerInstalled = false;
 
-  wrap.appendChild(debugCanvas);
-  document.body.appendChild(wrap);
-
-  window.addEventListener('keydown', (e) => {
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
-    if (e.key === 'm') {
-      showSkeleton = !showSkeleton;
-      wrap.style.display = showSkeleton ? 'block' : 'none';
-    }
-  });
+// Cache the vision fileset so we only load it once even with two trackers
+let visionPromise: Promise<any> | null = null;
+function getVision() {
+  if (!visionPromise) {
+    visionPromise = FilesetResolver.forVisionTasks(
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+    );
+  }
+  return visionPromise;
 }
 
-function drawSkeleton(
-  lm: { x: number; y: number; z?: number }[],
-  faceLm?: { x: number; y: number; z?: number }[]
-) {
-  if (!debugCtx || !debugCanvas || !video) return;
-  const w = debugCanvas.width, h = debugCanvas.height;
+// ---- Debug overlay container (shared) ----
 
-  debugCtx.clearRect(0, 0, w, h);
-  debugCtx.drawImage(video, 0, 0, w, h);
+function ensureDebugContainer() {
+  if (debugContainer) return;
 
-  debugCtx.strokeStyle = '#0f0';
-  debugCtx.lineWidth = 2;
-  for (const [a, b] of CONNECTIONS) {
-    if (!lm[a] || !lm[b]) continue;
-    debugCtx.beginPath();
-    debugCtx.moveTo(lm[a].x * w, lm[a].y * h);
-    debugCtx.lineTo(lm[b].x * w, lm[b].y * h);
-    debugCtx.stroke();
-  }
+  debugContainer = document.createElement('div');
+  debugContainer.id = 'pose-debug-container';
+  debugContainer.style.cssText =
+    'position:fixed;bottom:8px;left:8px;right:8px;display:none;' +
+    'pointer-events:none;z-index:900;' +
+    'display:flex;justify-content:space-between;align-items:flex-end;';
+  // Start hidden
+  debugContainer.style.display = 'none';
+  document.body.appendChild(debugContainer);
 
-  debugCtx.fillStyle = '#0f0';
-  for (const p of lm) {
-    debugCtx.beginPath();
-    debugCtx.arc(p.x * w, p.y * h, 3, 0, Math.PI * 2);
-    debugCtx.fill();
-  }
-
-  // Draw face landmarks as small cyan dots when available
-  if (faceLm) {
-    debugCtx.fillStyle = '#0ff';
-    for (const p of faceLm) {
-      debugCtx.beginPath();
-      debugCtx.arc(p.x * w, p.y * h, 1.5, 0, Math.PI * 2);
-      debugCtx.fill();
-    }
+  if (!keyListenerInstalled) {
+    keyListenerInstalled = true;
+    window.addEventListener('keydown', (e) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
+      if (e.key === 'm') {
+        showSkeleton = !showSkeleton;
+        if (debugContainer) {
+          debugContainer.style.display = showSkeleton ? 'flex' : 'none';
+        }
+      }
+    });
   }
 }
 
-export async function startPose(deviceId: string, tag = 'p1') {
-  performerTag = tag;
-  initDebugOverlay();
+// ---- Per-performer tracker ----
 
-  const vision = await FilesetResolver.forVisionTasks(
-    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
-  );
-  landmarker = await PoseLandmarker.createFromOptions(vision, {
-    baseOptions: {
-      modelAssetPath:
-        'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
-      delegate: 'GPU',
-    },
-    runningMode: 'VIDEO',
-    numPoses: 1,
-  });
+class PoseTracker {
+  readonly tag: string;
+  private landmarker: PoseLandmarker | null = null;
+  private faceLandmarker: FaceLandmarker | null = null;
+  private video: HTMLVideoElement | null = null;
+  private raf = 0;
+  private prevLandmarks: { x: number; y: number }[] | null = null;
+  private poseState: PoseStateTracker;
 
-  // Create FaceLandmarker alongside PoseLandmarker. If it fails (e.g. GPU
-  // delegate issue, model fetch failure), log a warning but keep pose running.
-  try {
-    faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+  // Debug overlay elements
+  private debugWrap: HTMLDivElement | null = null;
+  private debugCanvas: HTMLCanvasElement | null = null;
+  private debugCtx: CanvasRenderingContext2D | null = null;
+
+  constructor(tag: string) {
+    this.tag = tag;
+    this.poseState = new PoseStateTracker(tag);
+  }
+
+  async start(deviceId: string) {
+    this.initDebugPanel();
+
+    const vision = await getVision();
+    this.landmarker = await PoseLandmarker.createFromOptions(vision, {
       baseOptions: {
         modelAssetPath:
-          'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+          'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
         delegate: 'GPU',
       },
       runningMode: 'VIDEO',
-      numFaces: 1,
-      outputFaceBlendshapes: true,
+      numPoses: 1,
     });
-    console.log('[mediapipe] FaceLandmarker ready');
-  } catch (err) {
-    console.warn('[mediapipe] FaceLandmarker init failed — face signals unavailable:', err);
-    faceLandmarker = null;
-  }
 
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { deviceId: { exact: deviceId }, width: 640, height: 480 },
-  });
-  video = document.createElement('video');
-  video.srcObject = stream;
-  video.muted = true;
-  video.playsInline = true;
-  await video.play();
-  loop();
-}
-
-function loop() {
-  raf = requestAnimationFrame(loop);
-  if (!landmarker || !video) return;
-  const ts = performance.now();
-  const res = landmarker.detectForVideo(video, ts);
-  if (!res.landmarks?.[0]) return;
-  const lm = res.landmarks[0];
-
-  // ---- Face detection (same frame, same video element) ----
-  let faceLm: { x: number; y: number; z?: number }[] | undefined;
-  if (faceLandmarker) {
+    // Create FaceLandmarker alongside PoseLandmarker. If it fails (e.g. GPU
+    // delegate issue, model fetch failure), log a warning but keep pose running.
     try {
-      const faceRes = faceLandmarker.detectForVideo(video, ts);
-      if (faceRes.faceLandmarks?.[0]) {
-        faceLm = faceRes.faceLandmarks[0];
+      this.faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath:
+            'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+          delegate: 'GPU',
+        },
+        runningMode: 'VIDEO',
+        numFaces: 1,
+        outputFaceBlendshapes: true,
+      });
+      console.log(`[mediapipe:${this.tag}] FaceLandmarker ready`);
+    } catch (err) {
+      console.warn(`[mediapipe:${this.tag}] FaceLandmarker init failed — face signals unavailable:`, err);
+      this.faceLandmarker = null;
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { deviceId: { exact: deviceId }, width: 640, height: 480 },
+    });
+    this.video = document.createElement('video');
+    this.video.srcObject = stream;
+    this.video.muted = true;
+    this.video.playsInline = true;
+    await this.video.play();
+    this.loop();
+  }
+
+  stop() {
+    cancelAnimationFrame(this.raf);
+    if (this.video?.srcObject) {
+      (this.video.srcObject as MediaStream).getTracks().forEach(t => t.stop());
+    }
+    this.landmarker?.close();
+    this.landmarker = null;
+    this.faceLandmarker?.close();
+    this.faceLandmarker = null;
+    this.video = null;
+    this.prevLandmarks = null;
+    // Remove debug panel
+    this.debugWrap?.remove();
+    this.debugWrap = null;
+    this.debugCanvas = null;
+    this.debugCtx = null;
+  }
+
+  // ---- Debug overlay (per-performer panel) ----
+
+  private initDebugPanel() {
+    ensureDebugContainer();
+
+    this.debugWrap = document.createElement('div');
+    this.debugWrap.style.cssText =
+      'border:1px solid #0f06;border-radius:4px;overflow:hidden;';
+    // p2 appears on the left side, p1 on the right (flex order)
+    this.debugWrap.style.order = this.tag === 'p1' ? '2' : '1';
+
+    this.debugCanvas = document.createElement('canvas');
+    this.debugCanvas.width = 320;
+    this.debugCanvas.height = 240;
+    this.debugCanvas.style.cssText = 'display:block;background:#000;';
+    this.debugCtx = this.debugCanvas.getContext('2d')!;
+
+    // Tag label
+    const label = document.createElement('div');
+    label.style.cssText =
+      'position:absolute;top:4px;left:4px;color:#0f0;font:bold 11px ui-monospace,monospace;' +
+      'background:#0008;padding:1px 4px;border-radius:2px;pointer-events:none;';
+    label.textContent = this.tag;
+
+    const inner = document.createElement('div');
+    inner.style.cssText = 'position:relative;';
+    inner.appendChild(this.debugCanvas);
+    inner.appendChild(label);
+
+    this.debugWrap.appendChild(inner);
+    debugContainer!.appendChild(this.debugWrap);
+  }
+
+  private drawSkeleton(
+    lm: { x: number; y: number; z?: number }[],
+    faceLm?: { x: number; y: number; z?: number }[]
+  ) {
+    if (!this.debugCtx || !this.debugCanvas || !this.video) return;
+    const w = this.debugCanvas.width, h = this.debugCanvas.height;
+
+    this.debugCtx.clearRect(0, 0, w, h);
+    this.debugCtx.drawImage(this.video, 0, 0, w, h);
+
+    this.debugCtx.strokeStyle = '#0f0';
+    this.debugCtx.lineWidth = 2;
+    for (const [a, b] of CONNECTIONS) {
+      if (!lm[a] || !lm[b]) continue;
+      this.debugCtx.beginPath();
+      this.debugCtx.moveTo(lm[a].x * w, lm[a].y * h);
+      this.debugCtx.lineTo(lm[b].x * w, lm[b].y * h);
+      this.debugCtx.stroke();
+    }
+
+    this.debugCtx.fillStyle = '#0f0';
+    for (const p of lm) {
+      this.debugCtx.beginPath();
+      this.debugCtx.arc(p.x * w, p.y * h, 3, 0, Math.PI * 2);
+      this.debugCtx.fill();
+    }
+
+    // Draw face landmarks as small cyan dots when available
+    if (faceLm) {
+      this.debugCtx.fillStyle = '#0ff';
+      for (const p of faceLm) {
+        this.debugCtx.beginPath();
+        this.debugCtx.arc(p.x * w, p.y * h, 1.5, 0, Math.PI * 2);
+        this.debugCtx.fill();
       }
-      if (faceRes.faceBlendshapes?.[0]) {
-        processFaceBlendshapes(faceRes.faceBlendshapes[0].categories);
-      }
-    } catch {
-      // Silently ignore per-frame face detection errors
     }
   }
 
-  if (showSkeleton) drawSkeleton(lm, faceLm);
+  // ---- Per-frame loop ----
 
-  let motion = 0;
-  if (prevLandmarks) {
-    let acc = 0;
-    for (let i = 0; i < UPPER_BODY; i++) {
-      const dx = lm[i].x - prevLandmarks[i].x;
-      const dy = lm[i].y - prevLandmarks[i].y;
-      acc += Math.hypot(dx, dy);
+  private loop = () => {
+    this.raf = requestAnimationFrame(this.loop);
+    if (!this.landmarker || !this.video) return;
+    const ts = performance.now();
+    const res = this.landmarker.detectForVideo(this.video, ts);
+    if (!res.landmarks?.[0]) return;
+    const lm = res.landmarks[0];
+
+    // ---- Face detection (same frame, same video element) ----
+    let faceLm: { x: number; y: number; z?: number }[] | undefined;
+    if (this.faceLandmarker) {
+      try {
+        const faceRes = this.faceLandmarker.detectForVideo(this.video, ts);
+        if (faceRes.faceLandmarks?.[0]) {
+          faceLm = faceRes.faceLandmarks[0];
+        }
+        if (faceRes.faceBlendshapes?.[0]) {
+          this.processFaceBlendshapes(faceRes.faceBlendshapes[0].categories);
+        }
+      } catch {
+        // Silently ignore per-frame face detection errors
+      }
     }
-    motion = Math.min(1, (acc / UPPER_BODY) * config.poseGain);
+
+    if (showSkeleton) this.drawSkeleton(lm, faceLm);
+
+    let motion = 0;
+    if (this.prevLandmarks) {
+      let acc = 0;
+      for (let i = 0; i < UPPER_BODY; i++) {
+        const dx = lm[i].x - this.prevLandmarks[i].x;
+        const dy = lm[i].y - this.prevLandmarks[i].y;
+        acc += Math.hypot(dx, dy);
+      }
+      motion = Math.min(1, (acc / UPPER_BODY) * config.poseGain);
+    }
+    this.prevLandmarks = lm.map(p => ({ x: p.x, y: p.y }));
+
+    const lw = lm[15], rw = lm[16];
+    const openness = lw && rw ? Math.min(1, Math.hypot(lw.x - rw.x, lw.y - rw.y) * 1.2) : 0;
+
+    let cx = 0;
+    for (let i = 0; i < UPPER_BODY; i++) cx += lm[i].x;
+    cx /= UPPER_BODY;
+
+    if (config.poseContinuous) {
+      set(`pose.${this.tag}.motion`, motion);
+      set(`pose.${this.tag}.openness`, openness);
+    }
+
+    if (config.poseCentroid) {
+      set(`pose.${this.tag}.cx`, cx);
+    }
+
+    // Per-performer pose state
+    const stateValues = this.poseState.update(lm);
+
+    // ---- Write aggregate keys (max across all active trackers) ----
+    this.writeAggregates(motion, openness, stateValues);
+  };
+
+  private processFaceBlendshapes(categories: { categoryName: string; score: number }[]) {
+    // Build a quick lookup from the returned categories
+    const scores: Record<string, number> = {};
+    for (const cat of categories) {
+      if (NEEDED_BLENDSHAPES.has(cat.categoryName)) {
+        scores[cat.categoryName] = cat.score;
+      }
+    }
+
+    // Direct mappings
+    const mouthOpen = scores['jawOpen'] ?? 0;
+    const browUp = scores['browInnerUp'] ?? 0;
+
+    // Averaged L/R mappings
+    const eyeSquint = ((scores['eyeSquintLeft'] ?? 0) + (scores['eyeSquintRight'] ?? 0)) * 0.5;
+    const smile = ((scores['mouthSmileLeft'] ?? 0) + (scores['mouthSmileRight'] ?? 0)) * 0.5;
+    const browDown = ((scores['browDownLeft'] ?? 0) + (scores['browDownRight'] ?? 0)) * 0.5;
+
+    // Per-performer keys, gated by posture toggles
+    if (config.faceMouth) {
+      set(`face.${this.tag}.mouthOpen`, mouthOpen);
+    }
+    if (config.faceBrows) {
+      set(`face.${this.tag}.browUp`, browUp);
+      set(`face.${this.tag}.browDown`, browDown);
+    }
+    if (config.faceEyes) {
+      set(`face.${this.tag}.eyeSquint`, eyeSquint);
+    }
+    if (config.faceSmile) {
+      set(`face.${this.tag}.smile`, smile);
+    }
+
+    // Aggregate face keys: max across all active trackers
+    this.writeFaceAggregates();
   }
-  prevLandmarks = lm.map(p => ({ x: p.x, y: p.y }));
 
-  const lw = lm[15], rw = lm[16];
-  const openness = lw && rw ? Math.min(1, Math.hypot(lw.x - rw.x, lw.y - rw.y) * 1.2) : 0;
-
-  let cx = 0;
-  for (let i = 0; i < UPPER_BODY; i++) cx += lm[i].x;
-  cx /= UPPER_BODY;
-
-  if (config.poseContinuous) {
-    set(`pose.${performerTag}.motion`, motion);
-    set(`pose.${performerTag}.openness`, openness);
-    set('pose.motion', motion);
-    set('pose.openness', openness);
+  private writeFaceAggregates() {
+    for (const aggKey of FACE_AGG_KEYS) {
+      // e.g. 'face.mouthOpen' -> suffix is 'mouthOpen'
+      const suffix = aggKey.slice(5); // strip 'face.'
+      let best = 0;
+      for (const [, tracker] of trackers) {
+        const v = get(`face.${tracker.tag}.${suffix}`);
+        if (v > best) best = v;
+      }
+      // Gate by the appropriate config toggle
+      const gated = this.isFaceKeyGated(suffix);
+      if (gated) set(aggKey, best);
+    }
   }
 
-  if (config.poseCentroid) {
-    set(`pose.${performerTag}.cx`, cx);
+  private isFaceKeyGated(suffix: string): boolean {
+    if (suffix === 'mouthOpen') return config.faceMouth;
+    if (suffix === 'browUp' || suffix === 'browDown') return config.faceBrows;
+    if (suffix === 'eyeSquint') return config.faceEyes;
+    if (suffix === 'smile') return config.faceSmile;
+    return true;
   }
 
-  updatePoseState(lm);
+  private writeAggregates(
+    motion: number,
+    openness: number,
+    stateValues: Record<string, number> | null,
+  ) {
+    if (config.poseContinuous) {
+      // Max motion/openness across all active trackers
+      let bestMotion = motion;
+      let bestOpenness = openness;
+      for (const [tag, ] of trackers) {
+        if (tag === this.tag) continue;
+        const m = get(`pose.${tag}.motion`);
+        const o = get(`pose.${tag}.openness`);
+        if (m > bestMotion) bestMotion = m;
+        if (o > bestOpenness) bestOpenness = o;
+      }
+      set('pose.motion', bestMotion);
+      set('pose.openness', bestOpenness);
+    }
+
+    if (stateValues) {
+      // Max of each pose state across all active trackers
+      for (const state of POSE_STATES) {
+        let best = stateValues[state];
+        for (const [tag, ] of trackers) {
+          if (tag === this.tag) continue;
+          const v = get(`pose.state.${tag}.${state}`);
+          if (v > best) best = v;
+        }
+        set(`pose.state.${state}`, best, 0);
+      }
+    }
+  }
 }
 
-function processFaceBlendshapes(categories: { categoryName: string; score: number }[]) {
-  // Build a quick lookup from the returned categories
-  const scores: Record<string, number> = {};
-  for (const cat of categories) {
-    if (NEEDED_BLENDSHAPES.has(cat.categoryName)) {
-      scores[cat.categoryName] = cat.score;
-    }
-  }
+// ---- Public API ----
 
-  // Direct mappings
-  const mouthOpen = scores['jawOpen'] ?? 0;
-  const browUp = scores['browInnerUp'] ?? 0;
+export async function startPose(deviceId: string, tag = 'p1') {
+  // Stop existing tracker for this tag if any
+  const existing = trackers.get(tag);
+  if (existing) existing.stop();
 
-  // Averaged L/R mappings
-  const eyeSquint = ((scores['eyeSquintLeft'] ?? 0) + (scores['eyeSquintRight'] ?? 0)) * 0.5;
-  const smile = ((scores['mouthSmileLeft'] ?? 0) + (scores['mouthSmileRight'] ?? 0)) * 0.5;
-  const browDown = ((scores['browDownLeft'] ?? 0) + (scores['browDownRight'] ?? 0)) * 0.5;
-
-  // Per-performer + aggregate keys, gated by posture toggles
-  if (config.faceMouth) {
-    set(`face.${performerTag}.mouthOpen`, mouthOpen);
-    set('face.mouthOpen', mouthOpen);
-  }
-  if (config.faceBrows) {
-    set(`face.${performerTag}.browUp`, browUp);
-    set(`face.${performerTag}.browDown`, browDown);
-    set('face.browUp', browUp);
-    set('face.browDown', browDown);
-  }
-  if (config.faceEyes) {
-    set(`face.${performerTag}.eyeSquint`, eyeSquint);
-    set('face.eyeSquint', eyeSquint);
-  }
-  if (config.faceSmile) {
-    set(`face.${performerTag}.smile`, smile);
-    set('face.smile', smile);
-  }
+  const tracker = new PoseTracker(tag);
+  trackers.set(tag, tracker);
+  await tracker.start(deviceId);
 }
 
 export async function listVideoInputs(): Promise<MediaDeviceInfo[]> {
@@ -254,12 +410,11 @@ export async function listVideoInputs(): Promise<MediaDeviceInfo[]> {
 }
 
 export function stopPose() {
-  cancelAnimationFrame(raf);
-  video?.srcObject && (video.srcObject as MediaStream).getTracks().forEach(t => t.stop());
-  landmarker?.close();
-  landmarker = null;
-  faceLandmarker?.close();
-  faceLandmarker = null;
-  video = null;
-  prevLandmarks = null;
+  for (const [tag, tracker] of trackers) {
+    tracker.stop();
+    trackers.delete(tag);
+  }
+  // Clean up the shared debug container
+  debugContainer?.remove();
+  debugContainer = null;
 }

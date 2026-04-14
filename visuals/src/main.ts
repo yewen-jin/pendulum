@@ -99,13 +99,7 @@ async function main() {
   await startAudio(audioId).catch(e => console.warn('[audio] failed', e));
   startMidi();
   if (cam1Id) startPose(cam1Id, 'p1').catch(e => console.warn('[pose1] failed', e));
-  if (cam2Id) {
-    // Second performer: run the pose loop in a second instance by
-    // invoking startPose again with a different tag. Current module
-    // uses a single global landmarker — acceptable for v1 (swap to
-    // per-tag state when we genuinely need two simultaneous tracks).
-    console.warn('[pose] v1 tracks one performer at a time; cam2 ignored');
-  }
+  if (cam2Id) startPose(cam2Id, 'p2').catch(e => console.warn('[pose2] failed', e));
 
   function frame() {
     tick();

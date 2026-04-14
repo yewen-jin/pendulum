@@ -1,6 +1,8 @@
-# pendulum session log
+# pendulum session log (ARCHIVED)
 
-Running log of design decisions, built artifacts, open questions, and next steps. Append-only. Obsidian-friendly.
+> **Archived 2026-04-15.** No longer updated. WORKFLOW.md is the single source of truth for task tracking and session history. This file is kept as a read-only historical record.
+
+Running log of design decisions, built artifacts, open questions, and next steps. Obsidian-friendly.
 
 Each entry is a level-2 heading with ISO date + topic. Inside, four fixed bullet sections: **Decided / Built / Open questions / Next**.
 

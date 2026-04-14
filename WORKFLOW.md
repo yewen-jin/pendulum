@@ -107,8 +107,8 @@ _Updated each session start. Cleared on commit._
 
 ## Session history
 
-Detailed session log lives in `notes/log.md` (append-only).
-This section tracks only high-level session outcomes.
+Legacy session log archived in `notes/log.md` (read-only, no longer updated).
+`notes/status.md` removed — was fully superseded by milestones above.
 
 | Date | Focus | Outcome |
 |------|-------|---------|

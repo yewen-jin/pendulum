@@ -63,6 +63,12 @@ Examples:
 
 ## TODO
 
+### Active — current sprint
+
+- [ ] **Two-camera support** — refactor mediapipe.ts to support two simultaneous PoseLandmarker instances. Second performer writes `pose.p2.*` bus keys. Two skeleton preview panels (not one). Acceptance: both camera feeds visible, both pose states tracked independently.
+- [ ] **Debug UI grouping** — reorganize the debug overlay (`d` key) to group signals by category: audio, pose, face, midi, phone. Collapsible sections, visual hierarchy. Currently a flat alphabetical dump of all bus keys.
+- [ ] **Multi-renderer architecture** — support Three.js, p5.js alongside Hydra. Each mode declares its renderer. Bus stays renderer-agnostic. Director manages renderer lifecycle. **Needs architecture plan before code** — see `docs/multi-renderer.md`.
+
 ### Priority 1 — Rehearsal-ready
 
 - [ ] **Test MobMuPlat on actual phone** — verify all 5 OSC paths arrive at bridge. Blocked on user testing.
@@ -73,8 +79,7 @@ Examples:
 ### Priority 2 — Performance features
 
 - [ ] **Face blendshape -> scene wiring** — design how face signals modulate visuals. Not just "wire it" — need an interaction model (e.g., mouthOpen = aperture? browDown = distortion?).
-- [ ] **Second performer camera** — stubbed in UI (`pose.p2.*` namespace ready). Needs second PoseLandmarker instance in mediapipe.ts.
-- [ ] **In-browser recorder** — capture Hydra output for documentation/promo. MediaRecorder API on canvas.
+- [ ] **In-browser recorder** — capture canvas output for documentation/promo. MediaRecorder API on canvas.
 
 ### Priority 3 — Polish
 
@@ -85,7 +90,6 @@ Examples:
 
 ### Backlog
 
-- [ ] Settings panel: expose audio gain, smoothing alpha as tuning params
 - [ ] Per-scene CC mapping docs (currently inline comments only)
 - [ ] Performance profiling on ROG (MediaPipe + Hydra + audio = GPU contention?)
 
@@ -95,9 +99,9 @@ Examples:
 
 _Updated each session start. Cleared on commit._
 
-**Date:** 2026-04-14
-**Focus:** Workflow optimization + atomic commit discipline
-**Status:** Setting up WORKFLOW.md, updating CLAUDE.md
+**Date:** 2026-04-15
+**Focus:** Two-camera support, debug UI grouping, multi-renderer architecture plan
+**Status:** Planning multi-renderer architecture, dispatching feature work
 
 ---
 

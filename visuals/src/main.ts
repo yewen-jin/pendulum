@@ -1,14 +1,13 @@
 // Boots the visualiser. Order of ops:
-//   1. Hydra on the main canvas (1920x1080)
+//   1. Director + renderer on the main canvas (1920x1080)
 //   2. WS to bridge (OSC passthrough)
 //   3. Web Audio on Nord input (user picks device on first load)
 //   4. MediaPipe pose on selected camera(s)
-//   5. Director loop
+//   5. Director tick loop
 //
 // First load shows a setup screen to choose audio + video inputs.
 // Selections are persisted in localStorage so subsequent loads are silent.
 
-import Hydra from 'hydra-synth';
 import { connectBridge, set } from './bus';
 import { startAudio, listAudioInputs } from './audio';
 import { startPose, listVideoInputs } from './mediapipe';
@@ -21,13 +20,6 @@ const LS = {
   cam1: 'pendulum.cam1',
   cam2: 'pendulum.cam2',
 };
-
-async function bootHydra() {
-  const canvas = document.getElementById('stage') as HTMLCanvasElement;
-  canvas.width = 1920; canvas.height = 1080;
-  const h = new Hydra({ canvas, detectAudio: false, makeGlobal: true });
-  return h;
-}
 
 async function pickDevices(): Promise<{ audioId: string; cam1Id?: string; cam2Id?: string }> {
   // Need permission first to get device labels. Video may not exist (e.g. Mac
@@ -86,9 +78,9 @@ async function pickDevices(): Promise<{ audioId: string; cam1Id?: string; cam2Id
 }
 
 async function main() {
-  const h = await bootHydra();
+  const canvas = document.getElementById('stage') as HTMLCanvasElement;
   connectBridge(`ws://${location.hostname || 'localhost'}:9001`);
-  initDirector(h);
+  await initDirector(canvas);
   installDebug();
   installSettings();
 

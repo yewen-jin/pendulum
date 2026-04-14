@@ -4,30 +4,52 @@
 // `/phone/mode` with an int arg (0..N-1) selects the mode.
 // `/phone/panic` blacks out briefly regardless of current mode.
 
-import { applyMode, MODES, type ModeName } from './scenes';
 import { get, pulse } from './bus';
 import { config } from './settings';
+import type { Renderer } from './renderers/types';
+import { registerDefaults, rendererForScene, SCENES } from './renderers/registry';
 
-let hydra: any = null;
-let current: ModeName = 'drift';
+let canvas: HTMLCanvasElement | null = null;
+let activeRenderer: Renderer | null = null;
+let current: string = 'drift';
 
-export function initDirector(h: any) {
-  hydra = h;
-  applyMode(hydra, current);
+export async function initDirector(c: HTMLCanvasElement) {
+  canvas = c;
+  registerDefaults();
+
+  const renderer = rendererForScene(current);
+  if (renderer) {
+    await renderer.init(canvas);
+    activeRenderer = renderer;
+    activeRenderer.applyScene(current);
+  }
 }
 
 export function tick() {
   const next = config.sceneOverride
-    ?? MODES[Math.max(0, Math.min(MODES.length - 1, Math.round(get('phone.mode', 0))))];
-  if (next !== current) {
+    ?? SCENES[Math.max(0, Math.min(SCENES.length - 1, Math.round(get('phone.mode', 0))))];
+  if (next && next !== current) {
+    const nextRenderer = rendererForScene(next);
+    if (nextRenderer && nextRenderer !== activeRenderer) {
+      // Cross-renderer switch — destroy old, init new
+      // TODO: Phase 2 — handle async init (loading state)
+      activeRenderer?.destroy();
+      nextRenderer.init(canvas!).then(() => {
+        activeRenderer = nextRenderer;
+        activeRenderer.applyScene(next);
+      });
+    } else if (activeRenderer) {
+      activeRenderer.applyScene(next);
+    }
     current = next;
-    applyMode(hydra, current);
     console.log('[director] mode ->', current);
   }
+
+  activeRenderer?.tick();
 
   // Panic: stamp black over everything for ~250ms via CSS overlay
   if (pulse('phone.panic') > 0.01) document.body.classList.add('panic');
   else document.body.classList.remove('panic');
 }
 
-export function currentMode(): ModeName { return current; }
+export function currentMode(): string { return current; }

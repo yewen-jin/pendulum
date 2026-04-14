@@ -59,6 +59,7 @@ Examples:
 - [x] Docs: osc-addresses, bringup, abletonosc, signal-mapping
 - [x] Two-machine LAN validated (bridge on ROG + sender on Mac mini)
 - [x] Multi-renderer Phase 1: Renderer interface, HydraRenderer wrapper, scene registry
+- [x] Multi-renderer Phase 2: ThreeRenderer + particle debris field scene (Three.js)
 
 ---
 
@@ -69,7 +70,8 @@ Examples:
 - [x] **Two-camera support** — PoseTracker class, per-performer pose states, two skeleton panels, aggregate bus keys (MAX). `2ab69de`
 - [x] **Debug UI grouping** — color-coded collapsible sections: AUDIO/POSE/FACE/MIDI/PHONE. `259b602`
 - [x] **Multi-renderer Phase 1** — Renderer interface + HydraRenderer wrapper + registry. Director uses Renderer instead of raw Hydra. `7316e3e`
-- [ ] **Multi-renderer Phase 2** — Add Three.js renderer + one test scene. Verify renderer switching works. See `docs/multi-renderer.md`.
+- [x] **Multi-renderer Phase 2** — ThreeRenderer + particle debris field scene (3000 particles, custom shaders, bus-reactive). `2d38cc0`
+- [ ] **Multi-renderer Phase 3** — More Three.js/p5 scenes. Crossfade between renderers. See `docs/multi-renderer.md`.
 
 ### Priority 1 — Rehearsal-ready
 

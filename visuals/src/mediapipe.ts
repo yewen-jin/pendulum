@@ -59,9 +59,9 @@ function ensureDebugContainer() {
   debugContainer = document.createElement('div');
   debugContainer.id = 'pose-debug-container';
   debugContainer.style.cssText =
-    'position:fixed;bottom:8px;left:8px;right:8px;display:none;' +
+    'position:fixed;bottom:8px;right:8px;' +
     'pointer-events:none;z-index:900;' +
-    'display:flex;justify-content:space-between;align-items:flex-end;';
+    'display:flex;flex-direction:column;gap:4px;';
   // Start hidden
   debugContainer.style.display = 'none';
   document.body.appendChild(debugContainer);
@@ -171,8 +171,6 @@ class PoseTracker {
     this.debugWrap = document.createElement('div');
     this.debugWrap.style.cssText =
       'border:1px solid #0f06;border-radius:4px;overflow:hidden;';
-    // p2 appears on the left side, p1 on the right (flex order)
-    this.debugWrap.style.order = this.tag === 'p1' ? '2' : '1';
 
     this.debugCanvas = document.createElement('canvas');
     this.debugCanvas.width = 320;

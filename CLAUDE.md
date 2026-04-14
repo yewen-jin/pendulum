@@ -83,15 +83,9 @@ Scene functions should only use bus getters (`get`, `pulse`) for reactive parame
 
 MIDI controller: **Channel 2, CC 16–31** (16 knobs). Mapping: cc16=density, cc17=color, cc18=kaleid, cc19=speed, cc20=modulation, cc21=feedback, cc22=rotation, cc23=zoom, cc24=glitch, cc25=brightness, cc26=pixelate, cc27=hue, cc28–31=spare.
 
-## Known v1 gaps
+## Task tracking
 
-- MediaPipe pose/face: code exists but untested (no camera on Mac mini test machine). Needs ROG webcam.
-- MobMuPlat phone layout: not designed. Needs scene switch + intensity slider + panic button at minimum.
-- AbletonOSC: partially installed on Mac mini but non-functional (subscription logic not written). Low priority — MIDI sender covers most needs.
-- Second performer camera: stubbed in UI, not functional in pose loop.
-- FaceLandmarker: not wired. Add alongside PoseLandmarker when ready.
-- M4L device: `.maxpat` written but non-functional (`oscformat` missing in user's Max). Superseded by `sender/midi-to-osc.mjs`.
-- OBS recording: user has OBS experience; no additional code needed, just config.
+See `WORKFLOW.md` for the consolidated TODO list, progress, and session log. That file is the single source of truth for what's done and what's next.
 
 ## Conventions
 
@@ -99,6 +93,8 @@ MIDI controller: **Channel 2, CC 16–31** (16 knobs). Mapping: cc16=density, cc
 - Visuals are TypeScript via Vite. Loose `strict` — `noImplicitAny: false` — because Hydra is dynamic.
 - Keep reactive parameter functions tiny and branchless in `scenes.ts`; they run every frame.
 - When adding a new OSC path, update `docs/osc-addresses.md` first, then wire it on the Ableton/phone side, then optionally reference it in a scene.
+- **Atomic commits** — one commit per logical change. Format: `<type>: <what> (<scope>)`. See `WORKFLOW.md` for details.
+- **Update WORKFLOW.md** after every task: check off completed items, add new TODOs, update current session block.
 
 ## Subagent workflow
 
@@ -122,17 +118,6 @@ A good subagent brief includes:
 3. Concrete acceptance criteria ("scene foo responds to `pose.motion` with kaleid rotation").
 4. Constraint reminders ("reactive closures only — never capture raw bus values").
 5. Expected deliverable format (patched files vs. returned text).
-
-### Notes keeper
-
-Runs with `run_in_background: true` after each substantive turn. Appends a structured entry to the session log:
-
-- timestamp
-- what was discussed / decided
-- what was built / changed
-- open questions and follow-ups
-
-Log location: **TBD** — either `pendulum/notes/log.md` or a Notion page if the Notion MCP is configured for this workspace. The main session should decide once and tell the notes-keeper the destination in every brief so it remains self-contained.
 
 ### Things the main session cannot verify
 

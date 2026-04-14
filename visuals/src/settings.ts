@@ -1,4 +1,4 @@
-import { MODES, type ModeName } from './scenes';
+import { SCENES } from './renderers/registry';
 
 const LS = 'pendulum.tuning.';
 
@@ -12,7 +12,7 @@ export const config = {
   smoothing: load('smoothing', 0.8),
   impulseDecay: load('impulseDecay', 250),
   poseGain: load('poseGain', 40),
-  sceneOverride: loadStr('sceneOverride') as ModeName | null,
+  sceneOverride: loadStr('sceneOverride') as string | null,
   // Posture toggles
   poseStates: loadBool('poseStates', true),
   poseContinuous: loadBool('poseContinuous', true),
@@ -48,7 +48,7 @@ export function installSettings() {
     }
   });
 
-  const modeOpts = MODES.map(m => `<option value="${m}">${m}</option>`).join('');
+  const modeOpts = SCENES.map(m => `<option value="${m}">${m}</option>`).join('');
 
   panel.innerHTML = `
     <h3>rehearsal</h3>
@@ -119,7 +119,7 @@ export function installSettings() {
   bind(pg, 'poseGain', '#t-pg-v', v => `${v}`);
 
   scene.onchange = () => {
-    const v = scene.value as ModeName | '';
+    const v = scene.value;
     config.sceneOverride = v || null;
     save('sceneOverride', v || null);
   };

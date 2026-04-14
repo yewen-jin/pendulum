@@ -65,8 +65,8 @@ Examples:
 
 ### Active — current sprint
 
-- [ ] **Two-camera support** — refactor mediapipe.ts to support two simultaneous PoseLandmarker instances. Second performer writes `pose.p2.*` bus keys. Two skeleton preview panels (not one). Acceptance: both camera feeds visible, both pose states tracked independently.
-- [ ] **Debug UI grouping** — reorganize the debug overlay (`d` key) to group signals by category: audio, pose, face, midi, phone. Collapsible sections, visual hierarchy. Currently a flat alphabetical dump of all bus keys.
+- [x] **Two-camera support** — PoseTracker class, per-performer pose states, two skeleton panels, aggregate bus keys (MAX). `2ab69de`
+- [x] **Debug UI grouping** — color-coded collapsible sections: AUDIO/POSE/FACE/MIDI/PHONE. `259b602`
 - [ ] **Multi-renderer architecture** — support Three.js, p5.js alongside Hydra. Each mode declares its renderer. Bus stays renderer-agnostic. Director manages renderer lifecycle. **Needs architecture plan before code** — see `docs/multi-renderer.md`.
 
 ### Priority 1 — Rehearsal-ready

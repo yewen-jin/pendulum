@@ -84,6 +84,7 @@ function ensureDebugContainer() {
 
 class PoseTracker {
   readonly tag: string;
+  lastLandmarks: { x: number; y: number; z?: number }[] | null = null;
   private landmarker: PoseLandmarker | null = null;
   private faceLandmarker: FaceLandmarker | null = null;
   private video: HTMLVideoElement | null = null;
@@ -156,6 +157,7 @@ class PoseTracker {
     this.faceLandmarker = null;
     this.video = null;
     this.prevLandmarks = null;
+    this.lastLandmarks = null;
     // Remove debug panel
     this.debugWrap?.remove();
     this.debugWrap = null;
@@ -241,6 +243,7 @@ class PoseTracker {
     const res = this.landmarker.detectForVideo(this.video, ts);
     if (!res.landmarks?.[0]) return;
     const lm = res.landmarks[0];
+    this.lastLandmarks = lm;
 
     // ---- Face detection (same frame, same video element) ----
     let faceLm: { x: number; y: number; z?: number }[] | undefined;
@@ -405,6 +408,19 @@ export async function startPose(deviceId: string, tag = 'p1') {
 export async function listVideoInputs(): Promise<MediaDeviceInfo[]> {
   const devs = await navigator.mediaDevices.enumerateDevices();
   return devs.filter(d => d.kind === 'videoinput');
+}
+
+/** Returns the most recent raw landmarks for a performer, or null if
+ *  no pose has been detected yet. Coordinates are in MediaPipe's [0,1]
+ *  normalised space (x=left→right, y=top→bottom, origin top-left).
+ *  Scenes should treat this as read-only. */
+export function getKeypoints(tag: string): { x: number; y: number; z?: number }[] | null {
+  return trackers.get(tag)?.lastLandmarks ?? null;
+}
+
+/** Returns the tags of all currently active performers (e.g. ['p1', 'p2']). */
+export function getActiveTags(): string[] {
+  return [...trackers.keys()];
 }
 
 export function stopPose() {

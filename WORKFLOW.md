@@ -97,7 +97,8 @@ Examples:
 
 ### Priority 1 — Rehearsal-ready
 
-- [ ] **Test MobMuPlat on actual phone** — verify all 5 OSC paths arrive at bridge. Blocked on user testing.
+- [x] **Test MobMuPlat on actual phone** — OSC connection, panic blackout, 7-scene radio selector, intensity slider, XY pad, and runToggle all verified on device.
+- [x] **MobMuPlat layout cleanup** — 7-scene radio selector with sibling-clear exclusivity; blue toggle rewired to `/phone/runToggle` (bus key `phone.runToggle`) for scene consumption.
 - [ ] **Test pose state thresholds on ROG** — are classify() thresholds right for actual performance poses? User reports.
 - [ ] **Test FaceLandmarker on ROG** — check face.* signals in debug overlay. User reports.
 - [ ] **Scene aesthetic iteration** — current scenes are functional placeholders. Need projector + user feedback. Keywords: post-apocalyptic, spaceship, post-war, on escape.
@@ -126,8 +127,8 @@ Examples:
 _Updated each session start. Cleared on commit._
 
 **Date:** 2026-04-15
-**Focus:** Face-driven camera orbit for debrisField
-**Status:** Shipped. FaceLandmarker matrix → face.yaw/pitch/roll bus keys; debrisField camera orbits via spherical coords, scaled by `faceCamStrength`, gated by `faceHeadPose` toggle. Pending live test on ROG.
+**Focus:** MobMuPlat phone bringup bugfixes
+**Status:** Shipped. Four root causes resolved: (1) `.mmp` referenced missing `pendulum1.pd` → fixed filename; (2) Pd router only matched `/mode`, missed the 7 `/mode/N` toggles → rewrote network router with per-button `[sel 1]` handlers that emit `/phone/mode N` and clear sibling toggles via `[s toGUI]` for radio UX; (3) panic class had no CSS → added `body.panic::after` full-screen blackout; (4) bus smoothing made discrete signals ramp through fractions → `phone.mode`/`phone.runToggle` bypass smoothing. Blue toggle repurposed as `/phone/runToggle` for scene use. Intensity left as-is per user request.
 
 ---
 
@@ -151,3 +152,4 @@ Legacy session log archived in `notes/log.md` (read-only, no longer updated).
 | 2026-04-15 | sacredGeometry | p5 scene added then rewritten as strict {n/k} tessellation (hex/square lattice, analytic intersection radius, pose-state → math-parameter mapping) |
 | 2026-04-15 | Input smoothing | one-euro filter module; LandmarkSmoother per PoseTracker; audio.rms pre-smoothed; `getKeypointsSmoothed()` accessor; live smoothing sliders in rehearsal panel |
 | 2026-04-15 | Face-driven camera | FaceLandmarker transformation matrix → face.yaw/pitch/roll on bus; debrisField camera orbit; `faceHeadPose` toggle + `faceCamStrength` slider |
+| 2026-04-15 | MobMuPlat bringup fixes | `.mmp` pdFile reference, 7-scene radio Pd router with sibling-clear exclusivity, panic blackout CSS, discrete-key smoothing bypass, `/runToggle` rewired as `/phone/runToggle` |

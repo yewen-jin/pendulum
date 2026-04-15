@@ -2,6 +2,7 @@ import p5 from 'p5';
 import type { Renderer } from '../types';
 import type { P5Scene } from './types';
 import { BodyLinesScene } from './body-lines';
+import { SacredGeometryScene } from './sacred-geometry';
 
 export class P5Renderer implements Renderer {
   readonly name = 'p5';
@@ -14,7 +15,7 @@ export class P5Renderer implements Renderer {
   private lastFrame = 0;
 
   constructor() {
-    const scenes = [new BodyLinesScene()];
+    const scenes = [new BodyLinesScene(), new SacredGeometryScene()];
     this.sceneMap = new Map(scenes.map(s => [s.name, s]));
     this.scenes = scenes.map(s => s.name);
   }

@@ -1,6 +1,7 @@
 import type p5 from 'p5';
 import { get, pulse } from '../../bus';
 import { getKeypoints, getActiveTags } from '../../mediapipe';
+import { config } from '../../settings';
 import type { P5Scene } from './types';
 
 // Abstract flowing curves driven by live pose keypoints. Each performer
@@ -19,8 +20,6 @@ const L_WRIST = 15, R_WRIST = 16;
 const SAMPLES_PER_SEGMENT = 24;
 // How many parallel offset strokes build each limb ribbon
 const STROKE_LAYERS = 5;
-// Default fallback when a performer briefly loses pose
-const FALLBACK_TIMEOUT_MS = 500;
 
 type Pt = { x: number; y: number };
 
@@ -94,7 +93,7 @@ export class BodyLinesScene implements P5Scene {
       this.state.set(tag, st);
 
       if (lm) st.lastSeen = now;
-      if (!lm || now - st.lastSeen > FALLBACK_TIMEOUT_MS) continue;
+      if (!lm || now - st.lastSeen > config.bodyLinesDropoutMs) continue;
 
       // ---- Per-performer signals ----
       // Each performer has their own pose state + face; fall back to

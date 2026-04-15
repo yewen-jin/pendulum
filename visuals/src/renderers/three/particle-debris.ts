@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { get, pulse } from '../../bus';
 import { getKeypoints, getActiveTags } from '../../mediapipe';
+import { config } from '../../settings';
 import type { ThreeScene } from './types';
 
 const PARTICLE_COUNT = 3000;
@@ -14,15 +15,12 @@ const ANCHOR_INDICES = [
   15, 16, // wrists
 ];
 
-// World-space extents of the view at z=0 with our base camera.
+// Base world-space extents of the view at z=0 with our base camera.
 // Picked so normalised pose coords map to a comfortable area on screen.
-const VIEW_HALF_W = 18;
-const VIEW_HALF_H = 11;
-
-// Max spawn velocity inherited from keypoint motion. Keypoint deltas are
-// in normalised units per frame; this scale controls how much a fast
-// wrist throw flings the spawned particle.
-const KEYPOINT_VEL_SCALE = 80;
+// The final extent is BASE_VIEW_HALF_* × config.particleViewScale,
+// so the rehearsal panel can widen or tighten the mapping live.
+const BASE_halfW = 18;
+const BASE_halfH = 11;
 
 // ---- Shaders ----------------------------------------------------------------
 
@@ -377,6 +375,8 @@ export class ParticleDebrisScene implements ThreeScene {
     out.length = 0;
 
     const invDt = dt > 0 ? 1 / dt : 0;
+    const halfW = BASE_halfW * config.particleViewScale;
+    const halfH = BASE_halfH * config.particleViewScale;
 
     for (let pIdx = 0; pIdx < tags.length && pIdx < 2; pIdx++) {
       const tag = tags[pIdx];
@@ -395,15 +395,15 @@ export class ParticleDebrisScene implements ThreeScene {
           continue;
         }
         // MediaPipe: x is mirrored, y is top-down. Flip both into world space.
-        const worldX = (0.5 - l.x) * 2 * VIEW_HALF_W;
-        const worldY = (0.5 - l.y) * 2 * VIEW_HALF_H;
+        const worldX = (0.5 - l.x) * 2 * halfW;
+        const worldY = (0.5 - l.y) * 2 * halfH;
         positions.push(new THREE.Vector3(worldX, worldY, 0));
 
         if (prev && prev[idx]) {
           const dxN = l.x - prev[idx].x;
           const dyN = l.y - prev[idx].y;
-          const vWorldX = -dxN * 2 * VIEW_HALF_W * invDt;
-          const vWorldY = -dyN * 2 * VIEW_HALF_H * invDt;
+          const vWorldX = -dxN * 2 * halfW * invDt;
+          const vWorldY = -dyN * 2 * halfH * invDt;
           velocities.push(new THREE.Vector3(vWorldX, vWorldY, 0));
         } else {
           velocities.push(new THREE.Vector3());
@@ -451,8 +451,8 @@ export class ParticleDebrisScene implements ThreeScene {
     const ky = Math.sin(kPhi) * Math.sin(kTheta) * kick * (0.5 + Math.random());
     const kz = Math.cos(kPhi) * kick * (0.5 + Math.random());
 
-    this.velocities[i3]     = vel.x * KEYPOINT_VEL_SCALE + kx;
-    this.velocities[i3 + 1] = vel.y * KEYPOINT_VEL_SCALE + ky;
+    this.velocities[i3]     = vel.x * config.particleVelScale + kx;
+    this.velocities[i3 + 1] = vel.y * config.particleVelScale + ky;
     this.velocities[i3 + 2] = kz;
 
     this.performerAttr[i] = a.performerIdx;

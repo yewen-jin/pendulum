@@ -71,5 +71,11 @@ These bus keys are set by in-browser modules, not received via OSC.
 | `face.p1.eyeSquint`    | MediaPipe Face  | per-performer eye squint (L+R avg)   |
 | `face.p1.smile`        | MediaPipe Face  | per-performer mouth smile (L+R avg)  |
 | `face.p1.browDown`     | MediaPipe Face  | per-performer brow furrow (L+R avg)  |
+| `face.yaw`             | MediaPipe Face  | aggregate head yaw, -1..1 (±45°)     |
+| `face.pitch`           | MediaPipe Face  | aggregate head pitch, -1..1 (±45°)   |
+| `face.roll`            | MediaPipe Face  | aggregate head roll, -1..1 (±45°)    |
+| `face.p1.yaw`          | MediaPipe Face  | per-performer head yaw, -1..1        |
+| `face.p1.pitch`        | MediaPipe Face  | per-performer head pitch, -1..1      |
+| `face.p1.roll`         | MediaPipe Face  | per-performer head roll, -1..1       |
 
 Web MIDI writes the same bus keys as the MIDI→OSC sender. In the two-machine setup, the sender's OSC messages arrive via bridge and take precedence. In single-machine mode, Web MIDI reads the controller directly.

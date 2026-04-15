@@ -100,6 +100,15 @@ cc23 zoom, cc24 glitch, cc25 brightness.
 
 **Phone XY pad:** x → centroid offset; y → density ratio.
 
+**Face head-pose:** `face.yaw` orbits the camera horizontally around the
+scene origin, `face.pitch` orbits it vertically (half the yaw range
+since pitch reads as floor-tilt and is nausea-prone). The radius `R` is
+preserved from cc23 zoom, so face motion parallaxes the cloud rather
+than zooming. `face.roll` is available on the bus but unused. Gate
+with the `Head pose (yaw/pitch)` toggle in settings; scale the orbit
+deflection with the `Face cam strength` slider (0 = no orbit, 1 = full
+±28° yaw / ±14° pitch).
+
 **Panel-tunable (Scene tuning group):**
 - `particleVelScale` (0–200, default 80) — how hard a wrist throw
   flings new particles. Lower = slower, more floaty; higher = sharper

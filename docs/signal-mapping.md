@@ -67,6 +67,23 @@ Triangle model: 3 distances (nose↔left wrist, nose↔right wrist, left wrist�
 | `face.smile` | 0–1 | avg(mouthSmileLeft, mouthSmileRight) | Joy → warmth/color shift |
 | `face.browDown` | 0–1 | avg(browDownLeft, browDownRight) | Anger/intensity → distortion |
 
+## Face — head pose (FaceLandmarker transformation matrix)
+
+Derived from MediaPipe's `facialTransformationMatrixes` (enabled via
+`outputFacialTransformationMatrixes: true`). Each axis normalised so
+±π/4 rad (±45°) → ±1, clamped. Gated by the `Head pose (yaw/pitch)`
+toggle in the rehearsal panel.
+
+| Signal | Range | Source | Effect |
+|---|---|---|---|
+| `face.yaw`   | -1 … 1 | atan2(m02, m22) / (π/4) | Three.js debrisField: orbits camera horizontally around the scene origin (scaled by `faceCamStrength`). |
+| `face.pitch` | -1 … 1 | asin(-m12) / (π/4) | Three.js debrisField: orbits camera vertically (half yaw range — pitch is nausea-prone). |
+| `face.roll`  | -1 … 1 | atan2(m10, m11) / (π/4) | Reserved. Not consumed by any scene yet. |
+
+Per-performer keys `face.<tag>.{yaw,pitch,roll}` exist in parallel;
+aggregates pick the signed value with the largest absolute magnitude
+across active performers.
+
 ## Phone (MobMuPlat OSC)
 
 | Signal | Range | Effect |

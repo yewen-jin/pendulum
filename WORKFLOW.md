@@ -70,6 +70,7 @@ Examples:
 - [x] sacredGeometry p5 scene — N-fold radial mandala anchored between performers
 - [x] sacredGeometry rewritten as strict {n/k} tessellation (hex/square lattice, analytic intersection radius)
 - [x] One-euro filter for MediaPipe landmarks + audio RMS; `getKeypointsSmoothed()` accessor
+- [x] Face-driven camera: FaceLandmarker `facialTransformationMatrixes` → `face.yaw/pitch/roll` bus keys → debrisField orbit camera (scaled by `faceCamStrength`, gated by `faceHeadPose` toggle)
 
 ---
 

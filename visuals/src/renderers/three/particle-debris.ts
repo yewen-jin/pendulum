@@ -1,18 +1,21 @@
-import * as THREE from 'three';
-import { get, pulse } from '../../bus';
-import { getKeypointsSmoothed, getActiveTags } from '../../mediapipe';
-import { config } from '../../settings';
-import type { ThreeScene } from './types';
+import * as THREE from "three";
+import { get, pulse } from "../../bus";
+import { getKeypointsSmoothed, getActiveTags } from "../../mediapipe";
+import { config } from "../../settings";
+import type { ThreeScene } from "./types";
 
 const PARTICLE_COUNT = 3000;
 const SPAWN_RADIUS = 20;
 
 // MediaPipe upper-body landmark indices used as spawn anchors.
 const ANCHOR_INDICES = [
-  0,   // nose
-  11, 12, // shoulders
-  13, 14, // elbows
-  15, 16, // wrists
+  0, // nose
+  11,
+  12, // shoulders
+  13,
+  14, // elbows
+  15,
+  16, // wrists
 ];
 
 // Base world-space extents of the view at z=0 with our base camera.
@@ -94,14 +97,14 @@ const fragmentShader = /* glsl */ `
 // velocities from prev frame's normalised landmarks).
 type AnchorData = {
   tag: string;
-  performerIdx: number;       // 0 or 1 → p1 or p2
+  performerIdx: number; // 0 or 1 → p1 or p2
   positions: THREE.Vector3[]; // length = ANCHOR_INDICES.length
   velocities: THREE.Vector3[];
-  centroid: THREE.Vector3;    // midpoint of shoulders
+  centroid: THREE.Vector3; // midpoint of shoulders
 };
 
 export class ParticleDebrisScene implements ThreeScene {
-  readonly name = 'debrisField';
+  readonly name = "debrisField";
 
   private geometry: THREE.BufferGeometry | null = null;
   private material: THREE.ShaderMaterial | null = null;
@@ -146,10 +149,22 @@ export class ParticleDebrisScene implements ThreeScene {
     }
 
     this.geometry = new THREE.BufferGeometry();
-    this.geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
-    this.geometry.setAttribute('aLife', new THREE.BufferAttribute(this.lives, 1));
-    this.geometry.setAttribute('aSeed', new THREE.BufferAttribute(this.seeds, 1));
-    this.geometry.setAttribute('aPerformer', new THREE.BufferAttribute(this.performerAttr, 1));
+    this.geometry.setAttribute(
+      "position",
+      new THREE.BufferAttribute(this.positions, 3),
+    );
+    this.geometry.setAttribute(
+      "aLife",
+      new THREE.BufferAttribute(this.lives, 1),
+    );
+    this.geometry.setAttribute(
+      "aSeed",
+      new THREE.BufferAttribute(this.seeds, 1),
+    );
+    this.geometry.setAttribute(
+      "aPerformer",
+      new THREE.BufferAttribute(this.performerAttr, 1),
+    );
 
     this.material = new THREE.ShaderMaterial({
       vertexShader,
@@ -188,29 +203,29 @@ export class ParticleDebrisScene implements ThreeScene {
     dt = Math.min(dt, 0.1);
 
     // ---- Read bus signals ----
-    const rms = get('audio.rms');
-    const centroid = get('audio.centroid', 0.3);
-    const onset = pulse('audio.onset');
-    const motion = get('pose.motion');
-    const openness = get('pose.openness');
-    const compact = get('pose.state.compact');
-    const expansive = get('pose.state.expansive');
-    const elevated = get('pose.state.elevated');
-    const leftReach = get('pose.state.leftReach');
-    const rightReach = get('pose.state.rightReach');
-    const intensity = get('phone.intensity', 0.6);
-    const phoneX = get('phone.x', 0.5);
-    const phoneY = get('phone.y', 0.5);
+    const rms = get("audio.rms");
+    const centroid = get("audio.centroid", 0.3);
+    const onset = pulse("audio.onset");
+    const motion = get("pose.motion");
+    const openness = get("pose.openness");
+    const compact = get("pose.state.compact");
+    const expansive = get("pose.state.expansive");
+    const elevated = get("pose.state.elevated");
+    const leftReach = get("pose.state.leftReach");
+    const rightReach = get("pose.state.rightReach");
+    const intensity = get("phone.intensity", 0.6);
+    const phoneX = get("phone.x", 0.5);
+    const phoneY = get("phone.y", 0.5);
 
-    const cc16 = get('midi.cc.16');  // density
-    const cc17 = get('midi.cc.17');  // color shift
-    const cc19 = get('midi.cc.19');  // flow speed
-    const cc20 = get('midi.cc.20');  // turbulence
-    const cc21 = get('midi.cc.21');  // trail/smear
-    const cc22 = get('midi.cc.22');  // rotation
-    const cc23 = get('midi.cc.23');  // zoom
-    const cc24 = get('midi.cc.24');  // glitch
-    const cc25 = get('midi.cc.25');  // brightness
+    const cc16 = get("midi.cc.16"); // density
+    const cc17 = get("midi.cc.17"); // color shift
+    const cc19 = get("midi.cc.19"); // flow speed
+    const cc20 = get("midi.cc.20"); // turbulence
+    const cc21 = get("midi.cc.21"); // trail/smear
+    const cc22 = get("midi.cc.22"); // rotation
+    const cc23 = get("midi.cc.23"); // zoom
+    const cc24 = get("midi.cc.24"); // glitch
+    const cc25 = get("midi.cc.25"); // brightness
 
     // ---- Resolve live anchors for every active performer ----
     const anchors = this.resolveAnchors(dt);
@@ -228,12 +243,14 @@ export class ParticleDebrisScene implements ThreeScene {
     }
 
     // ---- Derived values ----
-    const velocityMult = (0.3 + motion * 2.0 + cc19 * 1.5) * (1 + rms * 3) * (0.5 + intensity);
+    const velocityMult =
+      (0.3 + motion * 2.0 + cc19 * 1.5) * (1 + rms * 3) * (0.5 + intensity);
     const wind = (leftReach - rightReach) * 2.0;
     const lift = elevated * 3.0;
     const turbulence = cc20 * 4.0;
     const densityRatio = 0.3 + cc16 * 0.5 + phoneY * 0.2;
-    const fallbackRadius = SPAWN_RADIUS * (1 + expansive * 1.5 - compact * 0.5 + rms * 0.5);
+    const fallbackRadius =
+      SPAWN_RADIUS * (1 + expansive * 1.5 - compact * 0.5 + rms * 0.5);
     const burstActive = onset > 0.3;
     let burstCount = 0;
 
@@ -276,16 +293,20 @@ export class ParticleDebrisScene implements ThreeScene {
       vx += wind * dt;
       vy += lift * dt;
 
-      if (compact > 0.01) {
-        const pull = compact * 2.0 * dt;
+      // cc25 maps to contraction/expansion: 0..0.5 contracts, 0.5..1 expands
+      const breathe = (cc25 - 0.5) * 2.0; // -1..1
+
+      if (compact > 0.01 || breathe < 0) {
+        const pull = (compact * 2.0 + Math.max(0, -breathe) * 3.0) * dt;
         vx -= px * pull;
         vy -= py * pull;
         vz -= pz * pull;
       }
 
-      if (expansive > 0.01) {
+      if (expansive > 0.01 || breathe > 0) {
         const dist = Math.sqrt(px * px + py * py + pz * pz) || 1;
-        const push = expansive * 3.0 * dt / dist;
+        const push =
+          ((expansive * 3.0 + Math.max(0, breathe) * 3.0) * dt) / dist;
         vx += px * push;
         vy += py * push;
         vz += pz * push;
@@ -313,14 +334,16 @@ export class ParticleDebrisScene implements ThreeScene {
       this.velocities[i3 + 1] = vy;
       this.velocities[i3 + 2] = vz;
 
-      this.positions[i3]     = px + vx * dt * velocityMult;
+      this.positions[i3] = px + vx * dt * velocityMult;
       this.positions[i3 + 1] = py + vy * dt * velocityMult;
       this.positions[i3 + 2] = pz + vz * dt * velocityMult;
     }
 
     this.geometry.attributes.position.needsUpdate = true;
-    (this.geometry.attributes.aLife as THREE.BufferAttribute).needsUpdate = true;
-    (this.geometry.attributes.aPerformer as THREE.BufferAttribute).needsUpdate = true;
+    (this.geometry.attributes.aLife as THREE.BufferAttribute).needsUpdate =
+      true;
+    (this.geometry.attributes.aPerformer as THREE.BufferAttribute).needsUpdate =
+      true;
 
     // ---- Update uniforms ----
     const u = this.material.uniforms;
@@ -335,12 +358,12 @@ export class ParticleDebrisScene implements ThreeScene {
     // Orbit camera around scene origin driven by face yaw/pitch. Signals are
     // already bus-smoothed (α=0.85); the 0.08 lerp adds a touch of cinematic
     // inertia so the camera glides rather than snaps.
-    const faceYaw = get('face.yaw');     // [-1, 1] ≈ ±45°
-    const facePitch = get('face.pitch');
+    const faceYaw = get("face.yaw"); // [-1, 1] ≈ ±45°
+    const facePitch = get("face.pitch");
     const R = 30 - cc23 * 20;
     const strength = config.faceCamStrength;
-    const theta = faceYaw * 0.7 * strength;   // ±40° max yaw
-    const phi   = facePitch * 0.5 * strength; // ±28° max pitch (nausea-prone axis)
+    const theta = faceYaw * 0.7 * strength; // ±40° max yaw
+    const phi = facePitch * 0.5 * strength; // ±28° max pitch (nausea-prone axis)
     const tx = R * Math.sin(theta) * Math.cos(phi);
     const ty = R * Math.sin(phi);
     const tz = R * Math.cos(theta) * Math.cos(phi);
@@ -425,12 +448,18 @@ export class ParticleDebrisScene implements ThreeScene {
       }
 
       // Body centroid: midpoint of shoulders (indices 1 and 2 in anchor list).
-      const centroid = positions[1].clone().add(positions[2]).multiplyScalar(0.5);
+      const centroid = positions[1]
+        .clone()
+        .add(positions[2])
+        .multiplyScalar(0.5);
 
       out.push({ tag, performerIdx: pIdx, positions, velocities, centroid });
 
       // Snapshot this frame's normalised landmarks for next tick.
-      this.prevNormLandmarks.set(tag, lm.map(l => ({ x: l.x, y: l.y })));
+      this.prevNormLandmarks.set(
+        tag,
+        lm.map((l) => ({ x: l.x, y: l.y })),
+      );
     }
 
     // Drop stale entries for performers who are no longer active.
@@ -453,8 +482,9 @@ export class ParticleDebrisScene implements ThreeScene {
     // Position: anchor + small random offset (offset from scene centroid,
     // because points.position is lerped to the scene centroid each tick).
     const spread = burst ? 0.8 : 1.4;
-    this.positions[i3]     = (pos.x - a.centroid.x) + (Math.random() - 0.5) * spread;
-    this.positions[i3 + 1] = (pos.y - a.centroid.y) + (Math.random() - 0.5) * spread;
+    this.positions[i3] = pos.x - a.centroid.x + (Math.random() - 0.5) * spread;
+    this.positions[i3 + 1] =
+      pos.y - a.centroid.y + (Math.random() - 0.5) * spread;
     this.positions[i3 + 2] = (Math.random() - 0.5) * spread;
 
     // Velocity: inherit keypoint motion + outward kick.
@@ -465,7 +495,7 @@ export class ParticleDebrisScene implements ThreeScene {
     const ky = Math.sin(kPhi) * Math.sin(kTheta) * kick * (0.5 + Math.random());
     const kz = Math.cos(kPhi) * kick * (0.5 + Math.random());
 
-    this.velocities[i3]     = vel.x * config.particleVelScale + kx;
+    this.velocities[i3] = vel.x * config.particleVelScale + kx;
     this.velocities[i3 + 1] = vel.y * config.particleVelScale + ky;
     this.velocities[i3 + 2] = kz;
 
@@ -479,11 +509,11 @@ export class ParticleDebrisScene implements ThreeScene {
     const theta = Math.random() * Math.PI * 2;
     const phi = Math.acos(2 * Math.random() - 1);
     const r = radius * (0.3 + Math.random() * 0.7);
-    this.positions[i3]     = r * Math.sin(phi) * Math.cos(theta);
+    this.positions[i3] = r * Math.sin(phi) * Math.cos(theta);
     this.positions[i3 + 1] = r * Math.sin(phi) * Math.sin(theta);
     this.positions[i3 + 2] = r * Math.cos(phi);
 
-    this.velocities[i3]     = (Math.random() - 0.5) * 2;
+    this.velocities[i3] = (Math.random() - 0.5) * 2;
     this.velocities[i3 + 1] = (Math.random() - 0.5) * 2;
     this.velocities[i3 + 2] = (Math.random() - 0.5) * 2;
 
@@ -494,14 +524,14 @@ export class ParticleDebrisScene implements ThreeScene {
   /** Fallback burst: no pose data, tight cluster + outward velocity. */
   private spawnBurstFree(i: number): void {
     const i3 = i * 3;
-    this.positions[i3]     = (Math.random() - 0.5) * 2;
+    this.positions[i3] = (Math.random() - 0.5) * 2;
     this.positions[i3 + 1] = (Math.random() - 0.5) * 2;
     this.positions[i3 + 2] = (Math.random() - 0.5) * 2;
 
     const speed = 8 + Math.random() * 12;
     const theta = Math.random() * Math.PI * 2;
     const phi = Math.acos(2 * Math.random() - 1);
-    this.velocities[i3]     = speed * Math.sin(phi) * Math.cos(theta);
+    this.velocities[i3] = speed * Math.sin(phi) * Math.cos(theta);
     this.velocities[i3 + 1] = speed * Math.sin(phi) * Math.sin(theta);
     this.velocities[i3 + 2] = speed * Math.cos(phi);
 

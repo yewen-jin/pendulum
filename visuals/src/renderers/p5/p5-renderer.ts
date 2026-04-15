@@ -60,8 +60,10 @@ export class P5Renderer implements Renderer {
   destroy(): void {
     this.activeScene?.dispose();
     this.activeScene = null;
-    // p5.remove() detaches its canvas and cleans up event listeners
-    this.sketch?.remove();
+    // Don't call sketch.remove() — it detaches the canvas from the DOM
+    // before the director's freshCanvas() can replace it. The director
+    // replaces the canvas element on cross-renderer switch, which
+    // orphans p5's sketch state for GC. Just drop our references.
     this.sketch = null;
     this.canvas = null;
   }

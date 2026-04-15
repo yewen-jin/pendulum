@@ -19,7 +19,13 @@ function freshCanvas(): HTMLCanvasElement {
   const old = canvas!;
   const next = document.createElement('canvas');
   next.id = old.id;
-  old.parentNode!.replaceChild(next, old);
+  const parent = old.parentNode;
+  if (parent) {
+    parent.replaceChild(next, old);
+  } else {
+    // Previous renderer detached the canvas — reattach to body.
+    document.body.appendChild(next);
+  }
   canvas = next;
   return next;
 }

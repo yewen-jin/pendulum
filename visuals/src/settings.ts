@@ -22,6 +22,10 @@ export const config = {
   faceEyes: loadBool('faceEyes', true),
   faceSmile: loadBool('faceSmile', true),
   poseTriangle: loadBool('poseTriangle', true),
+  // Scene-tuning knobs (uncertain — need live projector feedback to set well)
+  particleVelScale: load('particleVelScale', 80),    // debrisField: how hard keypoint motion flings new particles
+  particleViewScale: load('particleViewScale', 1.0), // debrisField: world-space size that pose coords map to
+  bodyLinesDropoutMs: load('bodyLinesDropoutMs', 500), // bodyLines: ms a performer's ribbons linger after pose loss
 };
 
 function load(key: string, fallback: number): number {
@@ -77,6 +81,25 @@ export function installSettings() {
     <div class="t-row">
       <button id="t-reset">reset all</button>
     </div>
+    <div class="t-collapse" id="t-scenetune">
+      <div class="t-collapse-header" id="t-scenetune-hdr">&#9654; Scene tuning</div>
+      <div class="t-collapse-body" id="t-scenetune-body" style="display:none">
+        <div class="t-group-label">debrisField</div>
+        <label>Keypoint velocity scale
+          <span class="t-val" id="t-pvs-v">${config.particleVelScale}</span>
+          <input id="t-pvs" type="range" min="0" max="200" step="5" value="${config.particleVelScale}" />
+        </label>
+        <label>View scale
+          <span class="t-val" id="t-pvw-v">${config.particleViewScale.toFixed(2)}×</span>
+          <input id="t-pvw" type="range" min="0.3" max="2.0" step="0.05" value="${config.particleViewScale}" />
+        </label>
+        <div class="t-group-label">bodyLines</div>
+        <label>Dropout persistence
+          <span class="t-val" id="t-bld-v">${config.bodyLinesDropoutMs}ms</span>
+          <input id="t-bld" type="range" min="0" max="2000" step="50" value="${config.bodyLinesDropoutMs}" />
+        </label>
+      </div>
+    </div>
     <div class="t-collapse" id="t-posture">
       <div class="t-collapse-header" id="t-posture-hdr">&#9654; Posture</div>
       <div class="t-collapse-body" id="t-posture-body">
@@ -118,6 +141,14 @@ export function installSettings() {
   bind(id, 'impulseDecay', '#t-id-v', v => `${v}ms`);
   bind(pg, 'poseGain', '#t-pg-v', v => `${v}`);
 
+  // Scene tuning knobs
+  const pvs = panel.querySelector<HTMLInputElement>('#t-pvs')!;
+  const pvw = panel.querySelector<HTMLInputElement>('#t-pvw')!;
+  const bld = panel.querySelector<HTMLInputElement>('#t-bld')!;
+  bind(pvs, 'particleVelScale', '#t-pvs-v', v => `${v}`);
+  bind(pvw, 'particleViewScale', '#t-pvw-v', v => `${v.toFixed(2)}×`);
+  bind(bld, 'bodyLinesDropoutMs', '#t-bld-v', v => `${v}ms`);
+
   scene.onchange = () => {
     const v = scene.value;
     config.sceneOverride = v || null;
@@ -129,14 +160,18 @@ export function installSettings() {
     location.reload();
   };
 
-  // ---- Collapsible Posture section ----
-  const postureHdr = panel.querySelector<HTMLDivElement>('#t-posture-hdr')!;
-  const postureBody = panel.querySelector<HTMLDivElement>('#t-posture-body')!;
-  postureHdr.onclick = () => {
-    const open = postureBody.style.display !== 'none';
-    postureBody.style.display = open ? 'none' : 'block';
-    postureHdr.innerHTML = open ? '&#9654; Posture' : '&#9660; Posture';
-  };
+  // ---- Collapsible sections ----
+  function wireCollapse(hdrId: string, bodyId: string, label: string) {
+    const hdr = panel.querySelector<HTMLDivElement>(hdrId)!;
+    const body = panel.querySelector<HTMLDivElement>(bodyId)!;
+    hdr.onclick = () => {
+      const open = body.style.display !== 'none';
+      body.style.display = open ? 'none' : 'block';
+      hdr.innerHTML = (open ? '&#9654; ' : '&#9660; ') + label;
+    };
+  }
+  wireCollapse('#t-posture-hdr', '#t-posture-body', 'Posture');
+  wireCollapse('#t-scenetune-hdr', '#t-scenetune-body', 'Scene tuning');
 
   // Posture toggles
   const toggleKeys: (keyof typeof config)[] = [

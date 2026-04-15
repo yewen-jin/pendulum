@@ -1,6 +1,7 @@
 import type { Renderer } from './types';
 import { HydraRenderer } from './hydra-renderer';
 import { ThreeRenderer } from './three-renderer';
+import { P5Renderer } from './p5-renderer';
 
 const renderers: Renderer[] = [];
 const sceneMap = new Map<string, Renderer>();
@@ -22,6 +23,7 @@ export function rendererForScene(scene: string): Renderer | undefined {
 export function registerDefaults(): void {
   registerRenderer(new HydraRenderer());
   registerRenderer(new ThreeRenderer());
+  registerRenderer(new P5Renderer());
   SCENES.length = 0;
   SCENES.push(...renderers.flatMap(r => r.scenes));
 }

@@ -62,6 +62,7 @@ Examples:
 - [x] Multi-renderer Phase 2: ThreeRenderer + particle debris field scene (Three.js)
 - [x] P5Renderer + body-lines scene (upper-body squiggly abstract figure)
 - [x] Renderers reorganised into per-renderer subdirectories (hydra/, three/, p5/)
+- [x] Hydra modes split into per-scene class files matching three/ and p5/ structure
 
 ---
 
@@ -75,7 +76,8 @@ Examples:
 - [x] **Multi-renderer Phase 2** — ThreeRenderer + particle debris field scene (3000 particles, custom shaders, bus-reactive). `2d38cc0`
 - [x] **P5Renderer + body-lines scene** — abstract upper-body figure as squiggly polylines reacting to pose/audio/MIDI. `159de04`
 - [x] **Renderers reorganised** — per-renderer subdirectories (hydra/, three/, p5/) each with their own scenes + renderer class. `6690360`
-- [ ] **Multi-renderer Phase 3** — More Three.js/p5 scenes. Crossfade between renderers. Optional: split Hydra modes into per-file classes for symmetry with three/p5. See `docs/multi-renderer.md`.
+- [x] **Hydra per-scene split** — drift/debris/signalLoss/reentry each in their own file implementing HydraScene; shared bus readers in signals.ts.
+- [ ] **Multi-renderer Phase 3** — More Three.js/p5 scenes. Crossfade between renderers. See `docs/multi-renderer.md`.
 
 ### Priority 1 — Rehearsal-ready
 

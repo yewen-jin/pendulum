@@ -4,6 +4,14 @@
 
 import { set, trigger } from './bus';
 import { config } from './settings';
+import { OneEuroFilter } from './filters/one-euro';
+
+// One-euro on RMS: mincutoff=1.0 Hz kills the per-frame sample noise
+// when the signal is steady; beta=2.0 means envelopes rise fast on
+// attacks (cutoff jumps to ~3 Hz at full-scale velocity), so kicks and
+// swells still read. This replaces the bus's fixed α=0.8 which was
+// simultaneously too laggy on attacks and too leaky at rest.
+const rmsFilter = new OneEuroFilter(1.0, 2.0);
 
 const FFT = 2048;
 const ONSET_ALPHA = 0.85;   // slow envelope for onset baseline
@@ -64,7 +72,13 @@ function loop() {
     fastEnv = 0;
   }
 
-  set('audio.rms', Math.min(1, rms * config.audioGain));
+  // Pre-smooth RMS with one-euro, then bypass the bus filter (α=0) so
+  // we don't double-filter. Centroid keeps its explicit α=0.85 — its
+  // bin-weighting is already heavy smoothing, additional one-euro would
+  // lag timbre changes.
+  const rmsGained = Math.min(1, rms * config.audioGain);
+  const rmsSmoothed = rmsFilter.filter(rmsGained, ctx.currentTime);
+  set('audio.rms', rmsSmoothed, 0);
   set('audio.centroid', centroid, 0.85);
 }
 

@@ -2,6 +2,15 @@ import { FilesetResolver, PoseLandmarker, FaceLandmarker } from '@mediapipe/task
 import { set, get } from './bus';
 import { config } from './settings';
 import { PoseStateTracker, POSE_STATES } from './pose-states';
+import { LandmarkSmoother } from './filters/one-euro';
+
+// Landmark smoother params. mincutoff=1.0 Hz gives ~160ms of smoothing
+// when a performer is still (kills the tracker's 30fps jitter); beta=0.01
+// is gentle so slow drifts smooth out but fast gestures still get through
+// with minimal lag. Tune live if anchors feel either laggy or wobbly.
+const LM_MINCUTOFF = 1.0;
+const LM_BETA = 0.01;
+const POSE_LANDMARK_COUNT = 33; // MediaPipe full body
 
 // Upper-body landmark count: indices 0–16 cover nose, eyes, ears,
 // shoulders, elbows, and wrists — everything visible in chest-up framing.
@@ -83,6 +92,10 @@ function ensureDebugContainer() {
 // ---- Per-performer tracker ----
 
 class PoseTracker {
+  // Smoothed landmarks for scene anchoring — one-euro filtered so
+  // static poses don't jitter and fast gestures still read through.
+  lastSmoothed: { x: number; y: number; z?: number }[] | null = null;
+  private smoother = new LandmarkSmoother(POSE_LANDMARK_COUNT, LM_MINCUTOFF, LM_BETA);
   readonly tag: string;
   lastLandmarks: { x: number; y: number; z?: number }[] | null = null;
   private landmarker: PoseLandmarker | null = null;
@@ -158,6 +171,8 @@ class PoseTracker {
     this.video = null;
     this.prevLandmarks = null;
     this.lastLandmarks = null;
+    this.lastSmoothed = null;
+    this.smoother.reset();
     // Remove debug panel
     this.debugWrap?.remove();
     this.debugWrap = null;
@@ -244,6 +259,7 @@ class PoseTracker {
     if (!res.landmarks?.[0]) return;
     const lm = res.landmarks[0];
     this.lastLandmarks = lm;
+    this.lastSmoothed = this.smoother.apply(lm, ts / 1000);
 
     // ---- Face detection (same frame, same video element) ----
     let faceLm: { x: number; y: number; z?: number }[] | undefined;
@@ -413,15 +429,23 @@ export async function listVideoInputs(): Promise<MediaDeviceInfo[]> {
 /** Returns the most recent **raw** landmarks for a performer, or null
  *  if no pose has been detected yet. Coordinates are in MediaPipe's
  *  [0,1] normalised space (x=left→right, y=top→bottom, origin top-left).
- *  Scenes should treat this as read-only.
  *
  *  ⚠ These are unfiltered — they jitter at the tracker's natural noise
- *  floor (~1–2 px equivalent at 30 fps). Scenes that anchor visuals to
- *  a body position will visibly shake. Use this for the skeleton overlay
- *  (where honesty matters) but prefer a smoothed accessor for visual
- *  anchoring once one exists — see WORKFLOW "Smooth jittery inputs". */
+ *  floor (~1–2 px equivalent at 30 fps). Use this for the skeleton
+ *  overlay (where honesty matters) or for motion/velocity derivatives
+ *  that want the full signal. Scenes that anchor visuals to a body
+ *  position should use `getKeypointsSmoothed()` instead. */
 export function getKeypoints(tag: string): { x: number; y: number; z?: number }[] | null {
   return trackers.get(tag)?.lastLandmarks ?? null;
+}
+
+/** Returns one-euro-filtered landmarks for a performer. Same coordinate
+ *  space as `getKeypoints` but with adaptive smoothing: heavy at rest
+ *  (no jitter on held poses) and light on fast motion (no lag on
+ *  gestures). Prefer this for any scene that anchors geometry to a
+ *  body position. */
+export function getKeypointsSmoothed(tag: string): { x: number; y: number; z?: number }[] | null {
+  return trackers.get(tag)?.lastSmoothed ?? null;
 }
 
 /** Returns the tags of all currently active performers (e.g. ['p1', 'p2']). */

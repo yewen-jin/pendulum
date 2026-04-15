@@ -7,9 +7,10 @@ import { LandmarkSmoother } from './filters/one-euro';
 // Landmark smoother params. mincutoff=1.0 Hz gives ~160ms of smoothing
 // when a performer is still (kills the tracker's 30fps jitter); beta=0.01
 // is gentle so slow drifts smooth out but fast gestures still get through
-// with minimal lag. Tune live if anchors feel either laggy or wobbly.
-const LM_MINCUTOFF = 1.0;
-const LM_BETA = 0.01;
+// with minimal lag. Mutable so the settings panel can retune live, and
+// so trackers started *after* a slider change inherit the latest values.
+let lmMincutoff = 1.0;
+let lmBeta = 0.01;
 const POSE_LANDMARK_COUNT = 33; // MediaPipe full body
 
 // Upper-body landmark count: indices 0–16 cover nose, eyes, ears,
@@ -95,7 +96,11 @@ class PoseTracker {
   // Smoothed landmarks for scene anchoring — one-euro filtered so
   // static poses don't jitter and fast gestures still read through.
   lastSmoothed: { x: number; y: number; z?: number }[] | null = null;
-  private smoother = new LandmarkSmoother(POSE_LANDMARK_COUNT, LM_MINCUTOFF, LM_BETA);
+  private smoother = new LandmarkSmoother(POSE_LANDMARK_COUNT, lmMincutoff, lmBeta);
+
+  configureSmoother(mincutoff: number, beta: number): void {
+    this.smoother.configure(mincutoff, beta);
+  }
   readonly tag: string;
   lastLandmarks: { x: number; y: number; z?: number }[] | null = null;
   private landmarker: PoseLandmarker | null = null;
@@ -446,6 +451,14 @@ export function getKeypoints(tag: string): { x: number; y: number; z?: number }[
  *  body position. */
 export function getKeypointsSmoothed(tag: string): { x: number; y: number; z?: number }[] | null {
   return trackers.get(tag)?.lastSmoothed ?? null;
+}
+
+/** Retune every active tracker's landmark smoother. Called from the
+ *  settings panel when the user slides the cutoff/beta knobs. */
+export function setLandmarkSmoothing(mincutoff: number, beta: number): void {
+  lmMincutoff = mincutoff;
+  lmBeta = beta;
+  for (const t of trackers.values()) t.configureSmoother(mincutoff, beta);
 }
 
 /** Returns the tags of all currently active performers (e.g. ['p1', 'p2']). */

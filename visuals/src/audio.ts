@@ -89,6 +89,11 @@ export function stopAudio() {
   ctx = null; analyser = null; stream = null;
 }
 
+/** Retune the RMS envelope smoother live. Called from the settings panel. */
+export function setRmsSmoothing(mincutoff: number, beta: number): void {
+  rmsFilter.configure(mincutoff, beta);
+}
+
 export async function listAudioInputs(): Promise<MediaDeviceInfo[]> {
   const devs = await navigator.mediaDevices.enumerateDevices();
   return devs.filter(d => d.kind === 'audioinput');

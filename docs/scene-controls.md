@@ -113,6 +113,30 @@ a 20-unit radius so the scene still looks alive pre-show.
 
 ---
 
+## Input smoothing (applies to every scene)
+
+Landmark and audio-RMS inputs are pre-filtered with a one-euro filter
+(`visuals/src/filters/one-euro.ts`) before scenes see them. The filter's
+cutoff rises with signal velocity, so held poses smooth heavily (no
+jitter) while fast gestures pass through with minimal lag. Four sliders
+in the rehearsal panel (Scene tuning group) tune it live:
+
+- **Landmark min cutoff** (0.1–5 Hz, default 1.0) — lower = more
+  smoothing when a performer is still. Drop toward 0.5 if anchors
+  still wobble on held poses.
+- **Landmark beta** (0–0.2, default 0.01) — higher = less lag on fast
+  gestures. Raise toward 0.05 if the mandala/particles feel draggy
+  during sudden motion.
+- **Audio RMS min cutoff** (0.1–5 Hz, default 1.0) — lower = steadier
+  envelope during held notes.
+- **Audio RMS beta** (0–10, default 2.0) — higher = sharper attack on
+  transients. Raise if kicks feel mushy; lower if RMS flickers.
+
+Scenes that want the *raw* signal (skeleton overlay, motion
+derivatives) still call `getKeypoints()` and get the unfiltered path.
+
+---
+
 ## p5.js scenes
 
 In `visuals/src/renderers/p5/`.

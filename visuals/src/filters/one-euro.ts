@@ -33,6 +33,12 @@ export class OneEuroFilter {
     this.dxPrev = 0;
   }
 
+  /** Change the cutoff parameters live without resetting filter state. */
+  configure(mincutoff: number, beta: number): void {
+    this.mincutoff = mincutoff;
+    this.beta = beta;
+  }
+
   /** Filter one sample. `tNow` in seconds (any monotonic clock). */
   filter(x: number, tNow: number): number {
     if (this.xPrev === null) {
@@ -82,6 +88,13 @@ export class LandmarkSmoother {
 
   reset(): void {
     for (const triple of this.filters) for (const f of triple) f.reset();
+  }
+
+  /** Retune every underlying filter live. Does not disturb running state. */
+  configure(mincutoff: number, beta: number): void {
+    for (const triple of this.filters) {
+      for (const f of triple) f.configure(mincutoff, beta);
+    }
   }
 
   /** Filter every landmark in `lm` at time `tNow` (seconds). Returns a

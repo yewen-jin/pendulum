@@ -1,4 +1,6 @@
 import { SCENES } from './renderers/registry';
+import { setLandmarkSmoothing } from './mediapipe';
+import { setRmsSmoothing } from './audio';
 
 const LS = 'pendulum.tuning.';
 
@@ -26,6 +28,12 @@ export const config = {
   particleVelScale: load('particleVelScale', 80),    // debrisField: how hard keypoint motion flings new particles
   particleViewScale: load('particleViewScale', 1.0), // debrisField: world-space size that pose coords map to
   bodyLinesDropoutMs: load('bodyLinesDropoutMs', 500), // bodyLines: ms a performer's ribbons linger after pose loss
+  // One-euro smoothing (see filters/one-euro.ts). mincutoff = heavier at
+  // rest when lower; beta = faster response on motion when higher.
+  lmMincutoff: load('lmMincutoff', 1.0),   // landmarks
+  lmBeta:      load('lmBeta', 0.01),
+  rmsMincutoff: load('rmsMincutoff', 1.0), // audio.rms
+  rmsBeta:      load('rmsBeta', 2.0),
 };
 
 function load(key: string, fallback: number): number {
@@ -98,6 +106,24 @@ export function installSettings() {
           <span class="t-val" id="t-bld-v">${config.bodyLinesDropoutMs}ms</span>
           <input id="t-bld" type="range" min="0" max="2000" step="50" value="${config.bodyLinesDropoutMs}" />
         </label>
+        <div class="t-group-label">Landmark smoothing (one-euro)</div>
+        <label>Min cutoff
+          <span class="t-val" id="t-lmc-v">${config.lmMincutoff.toFixed(2)} Hz</span>
+          <input id="t-lmc" type="range" min="0.1" max="5.0" step="0.05" value="${config.lmMincutoff}" />
+        </label>
+        <label>Beta
+          <span class="t-val" id="t-lmb-v">${config.lmBeta.toFixed(3)}</span>
+          <input id="t-lmb" type="range" min="0" max="0.2" step="0.005" value="${config.lmBeta}" />
+        </label>
+        <div class="t-group-label">Audio RMS smoothing (one-euro)</div>
+        <label>Min cutoff
+          <span class="t-val" id="t-rmc-v">${config.rmsMincutoff.toFixed(2)} Hz</span>
+          <input id="t-rmc" type="range" min="0.1" max="5.0" step="0.05" value="${config.rmsMincutoff}" />
+        </label>
+        <label>Beta
+          <span class="t-val" id="t-rmb-v">${config.rmsBeta.toFixed(2)}</span>
+          <input id="t-rmb" type="range" min="0" max="10" step="0.1" value="${config.rmsBeta}" />
+        </label>
       </div>
     </div>
     <div class="t-collapse" id="t-posture">
@@ -148,6 +174,32 @@ export function installSettings() {
   bind(pvs, 'particleVelScale', '#t-pvs-v', v => `${v}`);
   bind(pvw, 'particleViewScale', '#t-pvw-v', v => `${v.toFixed(2)}×`);
   bind(bld, 'bodyLinesDropoutMs', '#t-bld-v', v => `${v}ms`);
+
+  // One-euro smoothing sliders — push through to the live filters on
+  // every change so tuning is audible/visible without reload.
+  const lmc = panel.querySelector<HTMLInputElement>('#t-lmc')!;
+  const lmb = panel.querySelector<HTMLInputElement>('#t-lmb')!;
+  const rmc = panel.querySelector<HTMLInputElement>('#t-rmc')!;
+  const rmb = panel.querySelector<HTMLInputElement>('#t-rmb')!;
+  const pushLandmark = () => setLandmarkSmoothing(config.lmMincutoff, config.lmBeta);
+  const pushRms = () => setRmsSmoothing(config.rmsMincutoff, config.rmsBeta);
+  bindThen(lmc, 'lmMincutoff', '#t-lmc-v', v => `${v.toFixed(2)} Hz`, pushLandmark);
+  bindThen(lmb, 'lmBeta',      '#t-lmb-v', v => v.toFixed(3),         pushLandmark);
+  bindThen(rmc, 'rmsMincutoff', '#t-rmc-v', v => `${v.toFixed(2)} Hz`, pushRms);
+  bindThen(rmb, 'rmsBeta',      '#t-rmb-v', v => v.toFixed(2),         pushRms);
+  // Apply persisted values on install so a reload honours last session.
+  pushLandmark();
+  pushRms();
+
+  function bindThen(input: HTMLInputElement, key: keyof typeof config, labelId: string, fmt: (v: number) => string, after: () => void) {
+    input.oninput = () => {
+      const v = Number(input.value);
+      (config as any)[key] = v;
+      save(key, v);
+      panel.querySelector<HTMLSpanElement>(labelId)!.textContent = fmt(v);
+      after();
+    };
+  }
 
   scene.onchange = () => {
     const v = scene.value;

@@ -69,12 +69,17 @@ function pathToKey(path: string): string {
   return path.replace(/^\//, '').replace(/\//g, '.');
 }
 
+// Discrete keys bypass smoothing — integer/boolean signals should snap,
+// not ramp through intermediate fractional values.
+const DISCRETE_KEYS = new Set(['phone.mode', 'phone.runToggle']);
+
 export function ingestOsc(path: string, args: any[]) {
   const key = pathToKey(path);
   if (args.length === 0) { trigger(key); return; }
   const v = typeof args[0] === 'object' ? args[0].value : args[0];
-  if (typeof v === 'number') set(key, v);
-  else if (typeof v === 'boolean') set(key, v ? 1 : 0);
+  const alpha = DISCRETE_KEYS.has(key) ? 0 : undefined;
+  if (typeof v === 'number') set(key, v, alpha);
+  else if (typeof v === 'boolean') set(key, v ? 1 : 0, alpha);
   // string-valued OSC (e.g. named scene) stored under a sibling key
   else if (typeof v === 'string') {
     if (!(state as any)._strings) (state as any)._strings = new Map();

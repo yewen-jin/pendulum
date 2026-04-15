@@ -1,26 +1,46 @@
 import * as THREE from 'three';
 import { get, pulse } from '../../bus';
+import { getKeypoints, getActiveTags } from '../../mediapipe';
 import type { ThreeScene } from './types';
 
 const PARTICLE_COUNT = 3000;
 const SPAWN_RADIUS = 20;
+
+// MediaPipe upper-body landmark indices used as spawn anchors.
+const ANCHOR_INDICES = [
+  0,   // nose
+  11, 12, // shoulders
+  13, 14, // elbows
+  15, 16, // wrists
+];
+
+// World-space extents of the view at z=0 with our base camera.
+// Picked so normalised pose coords map to a comfortable area on screen.
+const VIEW_HALF_W = 18;
+const VIEW_HALF_H = 11;
+
+// Max spawn velocity inherited from keypoint motion. Keypoint deltas are
+// in normalised units per frame; this scale controls how much a fast
+// wrist throw flings the spawned particle.
+const KEYPOINT_VEL_SCALE = 80;
 
 // ---- Shaders ----------------------------------------------------------------
 
 const vertexShader = /* glsl */ `
   attribute float aLife;
   attribute float aSeed;
+  attribute float aPerformer;
   uniform float uPointScale;
-  uniform float uBrightness;
   varying float vLife;
   varying float vSeed;
+  varying float vPerformer;
 
   void main() {
     vLife = aLife;
     vSeed = aSeed;
+    vPerformer = aPerformer;
     vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
     gl_Position = projectionMatrix * mvPos;
-    // Size attenuates with distance, scales with life and uniform
     float size = (0.5 + aLife * 1.5) * uPointScale;
     gl_PointSize = size * (300.0 / -mvPos.z);
   }
@@ -32,6 +52,7 @@ const fragmentShader = /* glsl */ `
   uniform float uBrightness;
   varying float vLife;
   varying float vSeed;
+  varying float vPerformer;
 
   vec3 hueRotate(vec3 c, float angle) {
     float s = sin(angle);
@@ -45,15 +66,23 @@ const fragmentShader = /* glsl */ `
   }
 
   void main() {
-    // Circular point with soft edge
     float d = length(gl_PointCoord - 0.5) * 2.0;
     if (d > 1.0) discard;
     float alpha = smoothstep(1.0, 0.3, d) * vLife;
 
-    // Color: warm embers (low centroid) -> cool sparks (high centroid)
-    vec3 warm = vec3(1.0, 0.4, 0.1);
-    vec3 cool = vec3(0.7, 0.85, 1.0);
-    vec3 col = mix(warm, cool, uCentroid + vSeed * 0.15);
+    // Per-performer palette: p1 cool/cyan↔amber, p2 warm/magenta↔crimson.
+    // vPerformer < 0 → untagged particle, blended average.
+    float perfT = clamp(vPerformer, 0.0, 1.0);
+    vec3 warmP1 = vec3(1.0, 0.45, 0.1);
+    vec3 coolP1 = vec3(0.55, 0.85, 1.0);
+    vec3 warmP2 = vec3(1.0, 0.15, 0.35);
+    vec3 coolP2 = vec3(0.95, 0.55, 1.0);
+    vec3 warm = mix(warmP1, warmP2, perfT);
+    vec3 cool = mix(coolP1, coolP2, perfT);
+
+    float mixT = clamp(uCentroid + vSeed * 0.15, 0.0, 1.0);
+    vec3 col = mix(warm, cool, mixT);
+
     col = hueRotate(col, uHueShift * 6.28);
     col *= uBrightness;
 
@@ -63,6 +92,16 @@ const fragmentShader = /* glsl */ `
 
 // ---- Scene ------------------------------------------------------------------
 
+// Per-performer, per-frame anchor data (resolved world positions and
+// velocities from prev frame's normalised landmarks).
+type AnchorData = {
+  tag: string;
+  performerIdx: number;       // 0 or 1 → p1 or p2
+  positions: THREE.Vector3[]; // length = ANCHOR_INDICES.length
+  velocities: THREE.Vector3[];
+  centroid: THREE.Vector3;    // midpoint of shoulders
+};
+
 export class ParticleDebrisScene implements ThreeScene {
   readonly name = 'debrisField';
 
@@ -71,14 +110,20 @@ export class ParticleDebrisScene implements ThreeScene {
   private points: THREE.Points | null = null;
   private trailQuad: THREE.Mesh | null = null;
 
-  // Typed arrays for CPU-side particle state
   private positions!: Float32Array;
   private velocities!: Float32Array;
   private lives!: Float32Array;
   private seeds!: Float32Array;
+  private performerAttr!: Float32Array;
 
   private camera: THREE.PerspectiveCamera | null = null;
   private baseFov = 65;
+
+  // Prev-frame normalised landmark storage, keyed by performer tag.
+  private prevNormLandmarks = new Map<string, { x: number; y: number }[]>();
+
+  // Scratch objects reused each frame to avoid allocation churn.
+  private _anchorScratch: AnchorData[] = [];
 
   setup(scene: THREE.Scene, camera: THREE.PerspectiveCamera): void {
     this.camera = camera;
@@ -89,23 +134,24 @@ export class ParticleDebrisScene implements ThreeScene {
 
     scene.fog = new THREE.FogExp2(0x000000, 0.012);
 
-    // Allocate buffers
     this.positions = new Float32Array(PARTICLE_COUNT * 3);
     this.velocities = new Float32Array(PARTICLE_COUNT * 3);
     this.lives = new Float32Array(PARTICLE_COUNT);
     this.seeds = new Float32Array(PARTICLE_COUNT);
+    this.performerAttr = new Float32Array(PARTICLE_COUNT);
 
-    // Stagger initial lifetimes so particles don't all pop in at once
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       this.seeds[i] = Math.random();
-      this.lives[i] = Math.random() * 4; // random starting life
-      this.spawnParticle(i, SPAWN_RADIUS);
+      this.lives[i] = Math.random() * 4;
+      this.performerAttr[i] = -1;
+      this.spawnFree(i, SPAWN_RADIUS);
     }
 
     this.geometry = new THREE.BufferGeometry();
     this.geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
     this.geometry.setAttribute('aLife', new THREE.BufferAttribute(this.lives, 1));
     this.geometry.setAttribute('aSeed', new THREE.BufferAttribute(this.seeds, 1));
+    this.geometry.setAttribute('aPerformer', new THREE.BufferAttribute(this.performerAttr, 1));
 
     this.material = new THREE.ShaderMaterial({
       vertexShader,
@@ -141,7 +187,6 @@ export class ParticleDebrisScene implements ThreeScene {
 
   tick(dt: number): void {
     if (!this.geometry || !this.material || !this.camera) return;
-    // Clamp dt to avoid huge jumps on tab-switch
     dt = Math.min(dt, 0.1);
 
     // ---- Read bus signals ----
@@ -169,64 +214,78 @@ export class ParticleDebrisScene implements ThreeScene {
     const cc24 = get('midi.cc.24');  // glitch
     const cc25 = get('midi.cc.25');  // brightness
 
+    // ---- Resolve live anchors for every active performer ----
+    const anchors = this.resolveAnchors(dt);
+    const hasPose = anchors.length > 0;
+
+    // Midpoint between all active performers — used as the "local origin"
+    // so compact/expansive forces pull toward / push from the bodies.
+    const center = new THREE.Vector3();
+    if (hasPose) {
+      for (const a of anchors) center.add(a.centroid);
+      center.multiplyScalar(1 / anchors.length);
+    }
+    if (this.points) {
+      this.points.position.lerp(center, 0.12);
+    }
+
     // ---- Derived values ----
     const velocityMult = (0.3 + motion * 2.0 + cc19 * 1.5) * (1 + rms * 3) * (0.5 + intensity);
-    const spawnRadius = SPAWN_RADIUS * (1 + expansive * 1.5 - compact * 0.5 + rms * 0.5);
     const wind = (leftReach - rightReach) * 2.0;
     const lift = elevated * 3.0;
     const turbulence = cc20 * 4.0;
     const densityRatio = 0.3 + cc16 * 0.5 + phoneY * 0.2;
+    const fallbackRadius = SPAWN_RADIUS * (1 + expansive * 1.5 - compact * 0.5 + rms * 0.5);
+    const burstActive = onset > 0.3;
+    let burstCount = 0;
+
+    const now = performance.now() * 0.001;
 
     // ---- Update particles ----
-    const now = performance.now() * 0.001;
-    let burstCount = 0;
-    const burstActive = onset > 0.3;
-
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       const i3 = i * 3;
       this.lives[i] -= dt * (0.3 + rms * 0.2);
 
-      // Density gating: if particle is beyond the density ratio, accelerate death
       if (i / PARTICLE_COUNT > densityRatio) {
         this.lives[i] -= dt * 2.0;
       }
 
       if (this.lives[i] <= 0) {
-        // Burst: respawn with high velocity from a tight origin
-        if (burstActive && burstCount < 300) {
-          this.spawnBurst(i);
+        if (hasPose) {
+          // Respawn from a random anchor on a random active performer.
+          const a = anchors[(Math.random() * anchors.length) | 0];
+          const burst = burstActive && burstCount < 300;
+          this.spawnAtAnchor(i, a, burst);
+          if (burst) burstCount++;
+        } else if (burstActive && burstCount < 300) {
+          this.spawnBurstFree(i);
           burstCount++;
         } else {
-          this.spawnParticle(i, spawnRadius);
+          this.spawnFree(i, fallbackRadius);
         }
         continue;
       }
 
-      // Read current velocity
+      // Read current velocity/position (positions are in points.position-local space)
       let vx = this.velocities[i3];
       let vy = this.velocities[i3 + 1];
       let vz = this.velocities[i3 + 2];
+      const px = this.positions[i3];
+      const py = this.positions[i3 + 1];
+      const pz = this.positions[i3 + 2];
 
       // Apply forces
       vx += wind * dt;
       vy += lift * dt;
 
-      // Compact: pull toward center
       if (compact > 0.01) {
-        const px = this.positions[i3];
-        const py = this.positions[i3 + 1];
-        const pz = this.positions[i3 + 2];
         const pull = compact * 2.0 * dt;
         vx -= px * pull;
         vy -= py * pull;
         vz -= pz * pull;
       }
 
-      // Expansive: push outward
       if (expansive > 0.01) {
-        const px = this.positions[i3];
-        const py = this.positions[i3 + 1];
-        const pz = this.positions[i3 + 2];
         const dist = Math.sqrt(px * px + py * py + pz * pz) || 1;
         const push = expansive * 3.0 * dt / dist;
         vx += px * push;
@@ -234,7 +293,6 @@ export class ParticleDebrisScene implements ThreeScene {
         vz += pz * push;
       }
 
-      // Turbulence: pseudo-noise displacement
       if (turbulence > 0.01) {
         const seed = this.seeds[i];
         const t = now * 2.0 + seed * 100;
@@ -243,32 +301,28 @@ export class ParticleDebrisScene implements ThreeScene {
         vz += Math.sin(t * 1.1 + seed * 23.0) * turbulence * dt;
       }
 
-      // Glitch: random large offset
       if (cc24 > 0.01 && Math.random() < cc24 * 0.1 * dt) {
         vx += (Math.random() - 0.5) * cc24 * 40;
         vy += (Math.random() - 0.5) * cc24 * 40;
       }
 
-      // Damping
       const damp = 0.97;
       vx *= damp;
       vy *= damp;
       vz *= damp;
 
-      // Store velocity
       this.velocities[i3] = vx;
       this.velocities[i3 + 1] = vy;
       this.velocities[i3 + 2] = vz;
 
-      // Update position
-      this.positions[i3] += vx * dt * velocityMult;
-      this.positions[i3 + 1] += vy * dt * velocityMult;
-      this.positions[i3 + 2] += vz * dt * velocityMult;
+      this.positions[i3]     = px + vx * dt * velocityMult;
+      this.positions[i3 + 1] = py + vy * dt * velocityMult;
+      this.positions[i3 + 2] = pz + vz * dt * velocityMult;
     }
 
-    // Mark buffers for upload
     this.geometry.attributes.position.needsUpdate = true;
     (this.geometry.attributes.aLife as THREE.BufferAttribute).needsUpdate = true;
+    (this.geometry.attributes.aPerformer as THREE.BufferAttribute).needsUpdate = true;
 
     // ---- Update uniforms ----
     const u = this.material.uniforms;
@@ -278,23 +332,18 @@ export class ParticleDebrisScene implements ThreeScene {
     u.uPointScale.value = 1.0 - compact * 0.3 + expansive * 0.4;
 
     // ---- Camera ----
-    // FOV: openness widens, compact tightens
     const targetFov = this.baseFov + openness * 20 - compact * 10;
     this.camera.fov += (targetFov - this.camera.fov) * 0.05;
-    // Zoom: cc23 pulls camera in/out
     const targetZ = 30 - cc23 * 20;
     this.camera.position.z += (targetZ - this.camera.position.z) * 0.05;
     this.camera.updateProjectionMatrix();
 
-    // Rotation: cc22 rotates the particle system
     if (this.points) {
       this.points.rotation.z += cc22 * 0.02;
     }
 
-    // Trail effect: cc21 controls how much of the previous frame persists
     if (this.trailQuad) {
       const mat = this.trailQuad.material as THREE.MeshBasicMaterial;
-      // At cc21=0, fully clear (opacity 1.0). At cc21=1, heavy trails (opacity 0.03)
       mat.opacity = 1.0 - cc21 * 0.97;
     }
   }
@@ -313,43 +362,136 @@ export class ParticleDebrisScene implements ThreeScene {
     this.points = null;
     this.trailQuad = null;
     this.camera = null;
+    this.prevNormLandmarks.clear();
+    this._anchorScratch.length = 0;
   }
 
-  // ---- Particle helpers ----
+  // ---- Anchor resolution ----------------------------------------------------
 
-  private spawnParticle(i: number, radius: number): void {
+  /** For each active performer with current keypoints, compute world-space
+   *  anchor positions + per-anchor velocity derived from the previous frame.
+   *  Stores prev-frame landmarks for the next call. */
+  private resolveAnchors(dt: number): AnchorData[] {
+    const tags = getActiveTags();
+    const out = this._anchorScratch;
+    out.length = 0;
+
+    const invDt = dt > 0 ? 1 / dt : 0;
+
+    for (let pIdx = 0; pIdx < tags.length && pIdx < 2; pIdx++) {
+      const tag = tags[pIdx];
+      const lm = getKeypoints(tag);
+      if (!lm) continue;
+
+      const prev = this.prevNormLandmarks.get(tag);
+      const positions: THREE.Vector3[] = [];
+      const velocities: THREE.Vector3[] = [];
+
+      for (const idx of ANCHOR_INDICES) {
+        const l = lm[idx];
+        if (!l) {
+          positions.push(new THREE.Vector3());
+          velocities.push(new THREE.Vector3());
+          continue;
+        }
+        // MediaPipe: x is mirrored, y is top-down. Flip both into world space.
+        const worldX = (0.5 - l.x) * 2 * VIEW_HALF_W;
+        const worldY = (0.5 - l.y) * 2 * VIEW_HALF_H;
+        positions.push(new THREE.Vector3(worldX, worldY, 0));
+
+        if (prev && prev[idx]) {
+          const dxN = l.x - prev[idx].x;
+          const dyN = l.y - prev[idx].y;
+          const vWorldX = -dxN * 2 * VIEW_HALF_W * invDt;
+          const vWorldY = -dyN * 2 * VIEW_HALF_H * invDt;
+          velocities.push(new THREE.Vector3(vWorldX, vWorldY, 0));
+        } else {
+          velocities.push(new THREE.Vector3());
+        }
+      }
+
+      // Body centroid: midpoint of shoulders (indices 1 and 2 in anchor list).
+      const centroid = positions[1].clone().add(positions[2]).multiplyScalar(0.5);
+
+      out.push({ tag, performerIdx: pIdx, positions, velocities, centroid });
+
+      // Snapshot this frame's normalised landmarks for next tick.
+      this.prevNormLandmarks.set(tag, lm.map(l => ({ x: l.x, y: l.y })));
+    }
+
+    // Drop stale entries for performers who are no longer active.
+    for (const tag of this.prevNormLandmarks.keys()) {
+      if (!tags.includes(tag)) this.prevNormLandmarks.delete(tag);
+    }
+
+    return out;
+  }
+
+  // ---- Particle spawn helpers ----------------------------------------------
+
+  /** Spawn particle i at a performer anchor, inheriting keypoint velocity. */
+  private spawnAtAnchor(i: number, a: AnchorData, burst: boolean): void {
     const i3 = i * 3;
-    // Random position on a sphere
+    const anchorIdx = (Math.random() * a.positions.length) | 0;
+    const pos = a.positions[anchorIdx];
+    const vel = a.velocities[anchorIdx];
+
+    // Position: anchor + small random offset (offset from scene centroid,
+    // because points.position is lerped to the scene centroid each tick).
+    const spread = burst ? 0.8 : 1.4;
+    this.positions[i3]     = (pos.x - a.centroid.x) + (Math.random() - 0.5) * spread;
+    this.positions[i3 + 1] = (pos.y - a.centroid.y) + (Math.random() - 0.5) * spread;
+    this.positions[i3 + 2] = (Math.random() - 0.5) * spread;
+
+    // Velocity: inherit keypoint motion + outward kick.
+    const kick = burst ? 14 : 3;
+    const kTheta = Math.random() * Math.PI * 2;
+    const kPhi = Math.acos(2 * Math.random() - 1);
+    const kx = Math.sin(kPhi) * Math.cos(kTheta) * kick * (0.5 + Math.random());
+    const ky = Math.sin(kPhi) * Math.sin(kTheta) * kick * (0.5 + Math.random());
+    const kz = Math.cos(kPhi) * kick * (0.5 + Math.random());
+
+    this.velocities[i3]     = vel.x * KEYPOINT_VEL_SCALE + kx;
+    this.velocities[i3 + 1] = vel.y * KEYPOINT_VEL_SCALE + ky;
+    this.velocities[i3 + 2] = kz;
+
+    this.performerAttr[i] = a.performerIdx;
+    this.lives[i] = burst ? 0.6 + Math.random() * 1.0 : 2 + Math.random() * 4;
+  }
+
+  /** Fallback: spawn on a sphere around the scene origin with slow drift. */
+  private spawnFree(i: number, radius: number): void {
+    const i3 = i * 3;
     const theta = Math.random() * Math.PI * 2;
     const phi = Math.acos(2 * Math.random() - 1);
     const r = radius * (0.3 + Math.random() * 0.7);
-    this.positions[i3] = r * Math.sin(phi) * Math.cos(theta);
+    this.positions[i3]     = r * Math.sin(phi) * Math.cos(theta);
     this.positions[i3 + 1] = r * Math.sin(phi) * Math.sin(theta);
     this.positions[i3 + 2] = r * Math.cos(phi);
 
-    // Slow random drift velocity
-    this.velocities[i3] = (Math.random() - 0.5) * 2;
+    this.velocities[i3]     = (Math.random() - 0.5) * 2;
     this.velocities[i3 + 1] = (Math.random() - 0.5) * 2;
     this.velocities[i3 + 2] = (Math.random() - 0.5) * 2;
 
+    this.performerAttr[i] = -1;
     this.lives[i] = 2 + Math.random() * 4;
   }
 
-  private spawnBurst(i: number): void {
+  /** Fallback burst: no pose data, tight cluster + outward velocity. */
+  private spawnBurstFree(i: number): void {
     const i3 = i * 3;
-    // Tight cluster near origin
-    this.positions[i3] = (Math.random() - 0.5) * 2;
+    this.positions[i3]     = (Math.random() - 0.5) * 2;
     this.positions[i3 + 1] = (Math.random() - 0.5) * 2;
     this.positions[i3 + 2] = (Math.random() - 0.5) * 2;
 
-    // High outward velocity
     const speed = 8 + Math.random() * 12;
     const theta = Math.random() * Math.PI * 2;
     const phi = Math.acos(2 * Math.random() - 1);
-    this.velocities[i3] = speed * Math.sin(phi) * Math.cos(theta);
+    this.velocities[i3]     = speed * Math.sin(phi) * Math.cos(theta);
     this.velocities[i3 + 1] = speed * Math.sin(phi) * Math.sin(theta);
     this.velocities[i3 + 2] = speed * Math.cos(phi);
 
-    this.lives[i] = 0.5 + Math.random() * 1.0; // short-lived burst
+    this.performerAttr[i] = -1;
+    this.lives[i] = 0.5 + Math.random() * 1.0;
   }
 }

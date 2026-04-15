@@ -5,11 +5,11 @@ Controller layout for the performer's phone. Runs on iOS or Android via the **Mo
 ## Loading the layout
 
 1. Install **MobMuPlat** from the App Store / Play Store.
-2. Copy **both** `pendulum.mmp` and `pendulum.pd` to the MobMuPlat documents folder (iTunes File Sharing on iOS, or via a file manager on Android).
-3. Open MobMuPlat → tap the document icon → select `pendulum`.
-4. The layout loads with the embedded Pd patch (`pendulum.pd`) active. The patch routes all widget values to MobMuPlat's built-in network output via `[s toNetwork]`.
+2. Copy **both** `pendulum1.mmp` and `pendulum1.pd` to the MobMuPlat documents folder (iTunes File Sharing on iOS, or via a file manager on Android).
+3. Open MobMuPlat → tap the document icon → select `pendulum1`.
+4. The layout loads with the embedded Pd patch (`pendulum1.pd`) active. The patch routes all widget values to MobMuPlat's built-in network output via `[s toNetwork]`.
 
-> **Note on the Pd patch:** Some versions of MobMuPlat send OSC directly without a Pd patch. The included `pendulum.pd` is a safety net — it receives each widget's value via `[r <address>]` and forwards it as a formatted OSC message to `[s toNetwork]`, which MobMuPlat intercepts and sends as UDP to the configured host:port. No external Pd libraries are required; only core libpd objects are used.
+> **Note on the Pd patch:** Some versions of MobMuPlat send OSC directly without a Pd patch. The included `pendulum1.pd` is a safety net — it receives each widget's value via `[r <address>]` and forwards it as a formatted OSC message to `[s toNetwork]`, which MobMuPlat intercepts and sends as UDP to the configured host:port. No external Pd libraries are required; only core libpd objects are used.
 
 ## Network setup
 

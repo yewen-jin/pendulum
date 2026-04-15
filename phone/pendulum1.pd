@@ -613,10 +613,11 @@
 #X msg 1174 296 list /phone/intensity \$1;
 #X msg 1244 325 list /phone/x \$1;
 #X msg 1272 350 list /phone/y \$2;
-#X obj 1038 66 route /panic /mode /intensity /phoneXY;
+#X obj 1038 66 route /panic /mode /intensity /phoneXY /runToggle;
 #X text 240 -69 Routes widget values to [s toNetwork] for MobMuPlat UDP output.;
 #X text 240 -37 Configure destination IP and port in MobMuPlat Settings -> Network.;
 #X text 241 -100 pendulum1 -- human expert edited version MobMuPlat OSC router;
+#X msg 1318 325 list /phone/runToggle \$1;
 #X connect 0 0 1 0;
 #X connect 0 0 2 0;
 #X connect 1 0 0 1;
@@ -658,3 +659,5 @@
 #X connect 35 2 31 0;
 #X connect 35 3 33 0;
 #X connect 35 3 34 0;
+#X connect 35 4 39 0;
+#X connect 39 0 26 0;

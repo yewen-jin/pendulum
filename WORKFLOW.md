@@ -126,8 +126,8 @@ Examples:
 _Updated each session start. Cleared on commit._
 
 **Date:** 2026-04-15
-**Focus:** Two-camera support, debug UI grouping, multi-renderer architecture plan
-**Status:** Planning multi-renderer architecture, dispatching feature work
+**Focus:** Face-driven camera orbit for debrisField
+**Status:** Shipped. FaceLandmarker matrix → face.yaw/pitch/roll bus keys; debrisField camera orbits via spherical coords, scaled by `faceCamStrength`, gated by `faceHeadPose` toggle. Pending live test on ROG.
 
 ---
 
@@ -144,3 +144,10 @@ Legacy session log archived in `notes/log.md` (read-only, no longer updated).
 | 2026-04-13 | ROG bring-up | npm install, bridge/visuals running, WS connected |
 | 2026-04-13 | MediaPipe + phone | Pose states, FaceLandmarker, MobMuPlat layout + PD patch |
 | 2026-04-14 | Workflow optimization | WORKFLOW.md created, CLAUDE.md cleaned up, atomic commit discipline |
+| 2026-04-15 | Multi-renderer Phase 2 | ThreeRenderer + particle debris field scene; director handles cross-renderer switches (canvas replacement, Hydra tick neutered on destroy) |
+| 2026-04-15 | P5Renderer + reorg | P5Renderer + body-lines scene; renderers reorganised into hydra/ three/ p5/ subdirectories; Hydra modes split into per-scene classes |
+| 2026-04-15 | Keypoint-anchored scenes | body-lines rewritten as abstract keypoint ribbons; particle debris spawns from pose keypoints with per-performer palette; scene-tuning knobs exposed in rehearsal panel |
+| 2026-04-15 | bodyLines state layers | ribbons/silhouette/glow/inverse layers crossfade by pose state; docs/scene-controls.md added |
+| 2026-04-15 | sacredGeometry | p5 scene added then rewritten as strict {n/k} tessellation (hex/square lattice, analytic intersection radius, pose-state → math-parameter mapping) |
+| 2026-04-15 | Input smoothing | one-euro filter module; LandmarkSmoother per PoseTracker; audio.rms pre-smoothed; `getKeypointsSmoothed()` accessor; live smoothing sliders in rehearsal panel |
+| 2026-04-15 | Face-driven camera | FaceLandmarker transformation matrix → face.yaw/pitch/roll on bus; debrisField camera orbit; `faceHeadPose` toggle + `faceCamStrength` slider |

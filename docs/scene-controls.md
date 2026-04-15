@@ -180,56 +180,57 @@ spread.
 
 ### sacredGeometry (`sacred-geometry.ts`)
 
-Radial mandala built from N-fold symmetry — composition of Islamic
-geometry archetypes (flower of life, concentric rings, radial spokes,
-N-gon, {N/k} star polygon, petal arcs, pointed star). The whole pattern
-is **anchored between performers** so it visibly belongs to the room:
-the centre lerps to the midpoint of all active shoulder midpoints, and
-the radius scales with mean shoulder width (~3.5×). Geometry stays
-crystalline (no squiggle noise) to preserve the contemplative feel —
-audio reactivity comes through symmetry count, rotation, hue, and a
-bell-strike onset ring.
+**Tessellated Islamic star-and-polygon pattern** — strict ruler-and-
+compass construction, not a decorative mandala. A regular hex (or
+square) lattice of regular n-pointed star polygons {n/k}, drawn as
+discrete line segments so vertices land exactly on circles and on
+adjacent stars' tips. Pose state changes the actual *math parameters*
+(family n, star skip k, lattice spacing L, rotation Φ, shear ψ) so the
+pattern shifts between traditional families — 6-fold (hex), 12-fold
+(hex), 8-fold (square / Mamluk-style) — instead of just changing
+colours.
 
-**Layers (drawn bottom → top, all rotated together):**
+**Construction per cell:**
+1. n vertices on a circle of radius R = L/2 at angles `i·2π/n`.
+2. Outer regular n-gon: `vertex[i] → vertex[i+1]`.
+3. **{n/k} star polygon**: n discrete line segments, each connecting
+   `vertex[i] → vertex[(i+k) mod n]`. Drawn as `line()` calls (not a
+   shape walk) so endpoints exactly match the n-gon vertices.
+4. **Inner n-gon at the analytic intersection radius**
+   `r_inner = R · cos(π·k/n) / cos(π/n)` — derived from where adjacent
+   {n/k} segments cross. Vertices placed at angles
+   `(2i + k + 1)·π/n` so they sit *exactly on* the line crossings.
+5. Centre dot.
 
-1. **Flower of life** — 7 overlapping circles on a hex lattice (ghost
-   alpha, base grid).
-2. **Concentric rings** — count = `3 + cc16 * 7 + rms * 2`, each ring
-   slightly modulated by RMS so the grid breathes.
-3. **Radial spokes** — N straight lines from centre to each vertex.
-4. **Outer N-gon** — regular polygon outline.
-5. **{N/k} star polygon** — connect every k-th vertex; classic girih
-   star pattern. k from cc20.
-6. **Petal arcs** — quadratic-bezier inward curves between adjacent
-   spokes; depth grows with `openness + expansive`.
-7. **Pointed star** — 2N-vertex inner star (alternating outer/inner
-   radius), inner radius lifted by `elevated`.
-8. **Centre dot** — small filled disc, brightens on onset.
-9. **Onset bell-ring** — concentric ring expands from centre on each
-   `audio.onset`, NOT rotated with the mandala so the hit reads as a
-   bell strike rather than a spin.
+**Lattice tiling:** R = L/2 means adjacent cells touch tip-to-tip:
+- **hex lattice (n=6 or 12):** all 6 neighbours touch
+- **square lattice (n=8):** 4 cardinal neighbours touch, diagonal cells
+  contain the negative-space gap (classic Mamluk 8-pointed star bed)
 
-**Pose controls:**
-- Centre + radius follow aggregate shoulder midpoint and shoulder width
-- `compact` → reduces N (more legible, low symmetry)
-- `expansive` → raises N, increases saturation, boosts petal depth
-- `elevated` → lifts centre upward, brightens, grows inner star
-- `leftReach - rightReach` → torques the rotation (asymmetric reach
-  bends the mandala)
-- `openness` → petal depth + radius breath
+**Pose → math parameters** (this is the point of the scene):
+- `elevated` raises **n**: 6 → 12 (denser hex pattern)
+- `cc18 > 0.66` switches to **n=8 + square lattice** (different family)
+- `compact` lowers **k** (sparser, sharper stars)
+- `expansive` raises **k** (denser interlocked strapwork, approaches
+  {n/⌊n/2⌋} which passes through the centre)
+- `leftReach − rightReach` shears the lattice (hex → rhombic)
+- `motion` + `cc19` drive lattice rotation rate Φ
+- `rms` breathes cell size L (±12%)
+- `openness` scales the centre dot
 
 **Audio:**
-- `rms` → ring breathing, saturation, brightness, radius pulse
-- `centroid` → base hue
-- `onset` → centre flash + outward bell-ring burst, rotation kick
+- `rms` → saturation + cell breathing
+- `centroid` → hue
+- `onset` → rotation kick + outward bell-ring (un-rotated, so it reads
+  as a strike rather than a spin)
 
-**MIDI CCs:** cc16 ring count, cc17 hue shift, cc18 symmetry N
-(6–16), cc19 rotation speed, cc20 star skip k (in {N/k}), cc21 trail
-amount, cc22 extra rotation spin, cc23 scale multiplier (knob at zero
-leaves scale alone), cc25 brightness.
+**MIDI CCs:** cc16 k bias (density of strapwork), cc17 hue shift,
+cc18 family (low → 6-fold, mid → 12-fold, high → 8-fold square),
+cc19 rotation speed, cc21 trail amount, cc23 cell-size multiplier,
+cc25 brightness.
 
-**No panel-tunables.** Scale auto-fits to body size; tuning constants
-(`N_MIN`, `N_MAX`, anchor `3.5×` shoulder factor) live in the file.
+**No panel-tunables.** All constants are derived geometrically; tuning
+is done with cc18/cc23 + posture.
 
 ---
 

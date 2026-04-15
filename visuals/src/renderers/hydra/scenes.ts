@@ -2,7 +2,7 @@
 // `h` instance. Parameters are closed over `get/pulse` from the bus so they
 // update every frame without having to re-patch.
 
-import { get, pulse } from './bus';
+import { get, pulse } from '../../bus';
 
 export type ModeName = 'drift' | 'debris' | 'signalLoss' | 'reentry';
 

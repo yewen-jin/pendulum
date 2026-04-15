@@ -1,7 +1,7 @@
 import type { Renderer } from './types';
-import { HydraRenderer } from './hydra-renderer';
-import { ThreeRenderer } from './three-renderer';
-import { P5Renderer } from './p5-renderer';
+import { HydraRenderer } from './hydra/hydra-renderer';
+import { ThreeRenderer } from './three/three-renderer';
+import { P5Renderer } from './p5/p5-renderer';
 
 const renderers: Renderer[] = [];
 const sceneMap = new Map<string, Renderer>();

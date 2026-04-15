@@ -1,7 +1,7 @@
 import p5 from 'p5';
-import type { Renderer } from './types';
-import type { P5Scene } from './p5-scenes/types';
-import { BodyLinesScene } from './p5-scenes/body-lines';
+import type { Renderer } from '../types';
+import type { P5Scene } from './types';
+import { BodyLinesScene } from './body-lines';
 
 export class P5Renderer implements Renderer {
   readonly name = 'p5';

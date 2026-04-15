@@ -1,6 +1,6 @@
 import Hydra from 'hydra-synth';
-import { applyMode, MODES, type ModeName } from '../scenes';
-import type { Renderer } from './types';
+import { applyMode, MODES, type ModeName } from './scenes';
+import type { Renderer } from '../types';
 
 export class HydraRenderer implements Renderer {
   readonly name = 'hydra';

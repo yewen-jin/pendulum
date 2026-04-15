@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import type { Renderer } from './types';
-import type { ThreeScene } from './three-scenes/types';
-import { ParticleDebrisScene } from './three-scenes/particle-debris';
+import type { Renderer } from '../types';
+import type { ThreeScene } from './types';
+import { ParticleDebrisScene } from './particle-debris';
 
 export class ThreeRenderer implements Renderer {
   readonly name = 'three';

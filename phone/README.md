@@ -33,7 +33,8 @@ The bridge on the ROG listens on UDP 9000 and forwards to the browser over WS 90
 │                                 │
 ├─────────────────────────────────┤
 │ SCENE                           │
-│ [scene 1][scene 2][scene 3][scene 4][scene 5][scene 6][scene 7] │  ← mutually exclusive radio-style 7-scene selector
+│ drift  debris  sigLoss  reentry  particle  bodyLns  sacred      │
+│ [────────────────── slider 0..6 ──────────────────────────────] │  ← horizontal slider, range 6, Pd floors to int
 ├──────────┬──────────────────────┤
 │ INTENSITY│        X / Y         │
 │          │                      │
@@ -53,7 +54,7 @@ The bridge on the ROG listens on UDP 9000 and forwards to the browser over WS 90
 | Control | Widget | OSC path | Args | Notes |
 |---|---|---|---|---|
 | Panic | Button (momentary) | `/phone/panic` | none | Brief blackout only (~250 ms). Not a latched stop, reset, or mode change. Big red target top of screen. |
-| Scene | Radio-style 7-choice selector | `/phone/mode` | int 0–6 | Sends one of seven scene indices. The seven buttons are mutually exclusive, so selecting one scene clears the others. Label the buttons in layout order to match the current 7-scene registry in the visuals. |
+| Scene | MMPSlider (horizontal, `range:6`) | `/phone/mode` | int 0–6 | Slider float is floored to int by `[int]` in the Pd patch before forwarding. Maps left→right to scene indices 0=drift, 1=debris, 2=signalLoss, 3=reentry, 4=particleDebris, 5=bodyLines, 6=sacredGeometry. |
 | Intensity | Slider (vertical) | `/phone/intensity` | float 0–1 | Global intensity multiplier. Default 0.6. |
 | XY pad | XYSlider | `/phone/x`, `/phone/y` | float 0–1 each | Free parameter. MobMuPlat sends `/phone/x` and `/phone/y` as separate messages. |
 | Blue toggle | Toggle | `/phone/runToggle` | int 0/1 | Now forwarded to the visuals as `/phone/runToggle` (bus key `phone.runToggle`). Can be used by scenes as a latching on/off toggle. The internal audio path inside `[pd readToseq]` also still receives `/runToggle` and is unaffected. |
@@ -64,12 +65,12 @@ The bridge on the ROG listens on UDP 9000 and forwards to the browser over WS 90
 
 ## One-handed use
 
-The intensity slider is on the left third of the screen — thumb-accessible for a right-handed player. The XY pad fills the right two-thirds; sweep it with your thumb for expressive control. The scene selector is in the middle zone and should behave like a radio group with seven discrete, mutually exclusive choices. Panic is at the top, requiring you to shift grip.
+The intensity slider is on the left third of the screen — thumb-accessible for a right-handed player. The XY pad fills the right two-thirds; sweep it with your thumb for expressive control. The scene selector is a horizontal slider spanning the full width just below the SCENE label; sweep it left or right to step through the 7 scenes. Panic is at the top, requiring you to shift grip.
 
 ## Troubleshooting
 
 - **No response in visuals**: check `d` overlay in browser to confirm OSC signals arriving. Verify ROG IP and travel router connection.
-- **Mode not switching**: the Pd patch now uses per-button receivers wired via `route /mode/0 .. /mode/6`. Each button press (value `1`) triggers a `[sel 1]` gate that emits `/phone/mode N` to the network and sends `/mode/M 0` back to the GUI for every sibling M ≠ N (visual deselect). If modes still don't switch, confirm the widget addresses in the `.mmp` match exactly `/mode/0` through `/mode/6`, and that the visuals settings panel does not have a scene override enabled.
+- **Mode not switching**: the slider sends `/mode` as a float; the Pd `[int]` floors it to an integer before emitting `/phone/mode N` to the network. No sibling exclusivity logic is needed. If modes still don't switch after moving the slider, check that the visuals settings panel (press `s`) does not have a scene override enabled, and confirm OSC is arriving via the `d` overlay.
 - **Panic seems unclear**: current behavior is intentionally minimal — it only triggers a brief blackout pulse and then returns to the active scene.
 - **Blue button at the bottom**: this toggle now sends `/phone/runToggle` (0/1) to the visuals. Check the `d` overlay in the browser to confirm `phone.runToggle` updates when you press it.
 - **Intensity slider starts at 0 on reload**: MobMuPlat resets widget state on reopen; nudge the slider once at show start to push the default 0.6 value to the bus.

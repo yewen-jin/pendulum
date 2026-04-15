@@ -23,11 +23,13 @@ export const config = {
   faceBrows: loadBool('faceBrows', true),
   faceEyes: loadBool('faceEyes', true),
   faceSmile: loadBool('faceSmile', true),
+  faceHeadPose: loadBool('faceHeadPose', true),
   poseTriangle: loadBool('poseTriangle', true),
   // Scene-tuning knobs (uncertain — need live projector feedback to set well)
   particleVelScale: load('particleVelScale', 80),    // debrisField: how hard keypoint motion flings new particles
   particleViewScale: load('particleViewScale', 1.0), // debrisField: world-space size that pose coords map to
   bodyLinesDropoutMs: load('bodyLinesDropoutMs', 500), // bodyLines: ms a performer's ribbons linger after pose loss
+  faceCamStrength: load('faceCamStrength', 0.5),   // debrisField: how much face.yaw/pitch orbits the camera (0..1)
   // One-euro smoothing (see filters/one-euro.ts). mincutoff = heavier at
   // rest when lower; beta = faster response on motion when higher.
   lmMincutoff: load('lmMincutoff', 1.0),   // landmarks
@@ -106,6 +108,11 @@ export function installSettings() {
           <span class="t-val" id="t-bld-v">${config.bodyLinesDropoutMs}ms</span>
           <input id="t-bld" type="range" min="0" max="2000" step="50" value="${config.bodyLinesDropoutMs}" />
         </label>
+        <div class="t-group-label">Face-driven camera (debrisField)</div>
+        <label>Face cam strength
+          <span class="t-val" id="t-fcs-v">${(config.faceCamStrength * 100).toFixed(0)}%</span>
+          <input id="t-fcs" type="range" min="0" max="1" step="0.05" value="${config.faceCamStrength}" />
+        </label>
         <div class="t-group-label">Landmark smoothing (one-euro)</div>
         <label>Min cutoff
           <span class="t-val" id="t-lmc-v">${config.lmMincutoff.toFixed(2)} Hz</span>
@@ -138,6 +145,7 @@ export function installSettings() {
         <label class="t-toggle"><input type="checkbox" id="t-faceBrows" ${config.faceBrows ? 'checked' : ''} /> Brows</label>
         <label class="t-toggle"><input type="checkbox" id="t-faceEyes" ${config.faceEyes ? 'checked' : ''} /> Eyes</label>
         <label class="t-toggle"><input type="checkbox" id="t-faceSmile" ${config.faceSmile ? 'checked' : ''} /> Smile</label>
+        <label class="t-toggle"><input type="checkbox" id="t-faceHeadPose" ${config.faceHeadPose ? 'checked' : ''} /> Head pose (yaw/pitch)</label>
         <div class="t-group-label">Raw data</div>
         <label class="t-toggle"><input type="checkbox" id="t-poseTriangle" ${config.poseTriangle ? 'checked' : ''} /> Triangle distances</label>
       </div>
@@ -174,6 +182,8 @@ export function installSettings() {
   bind(pvs, 'particleVelScale', '#t-pvs-v', v => `${v}`);
   bind(pvw, 'particleViewScale', '#t-pvw-v', v => `${v.toFixed(2)}×`);
   bind(bld, 'bodyLinesDropoutMs', '#t-bld-v', v => `${v}ms`);
+  const fcs = panel.querySelector<HTMLInputElement>('#t-fcs')!;
+  bind(fcs, 'faceCamStrength', '#t-fcs-v', v => `${(v * 100).toFixed(0)}%`);
 
   // One-euro smoothing sliders — push through to the live filters on
   // every change so tuning is audible/visible without reload.
@@ -228,7 +238,7 @@ export function installSettings() {
   // Posture toggles
   const toggleKeys: (keyof typeof config)[] = [
     'poseStates', 'poseContinuous', 'poseCentroid',
-    'faceMouth', 'faceBrows', 'faceEyes', 'faceSmile',
+    'faceMouth', 'faceBrows', 'faceEyes', 'faceSmile', 'faceHeadPose',
     'poseTriangle',
   ];
   for (const key of toggleKeys) {

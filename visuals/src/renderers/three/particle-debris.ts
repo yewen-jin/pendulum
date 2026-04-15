@@ -332,8 +332,22 @@ export class ParticleDebrisScene implements ThreeScene {
     // ---- Camera ----
     const targetFov = this.baseFov + openness * 20 - compact * 10;
     this.camera.fov += (targetFov - this.camera.fov) * 0.05;
-    const targetZ = 30 - cc23 * 20;
-    this.camera.position.z += (targetZ - this.camera.position.z) * 0.05;
+    // Orbit camera around scene origin driven by face yaw/pitch. Signals are
+    // already bus-smoothed (α=0.85); the 0.08 lerp adds a touch of cinematic
+    // inertia so the camera glides rather than snaps.
+    const faceYaw = get('face.yaw');     // [-1, 1] ≈ ±45°
+    const facePitch = get('face.pitch');
+    const R = 30 - cc23 * 20;
+    const strength = config.faceCamStrength;
+    const theta = faceYaw * 0.7 * strength;   // ±40° max yaw
+    const phi   = facePitch * 0.5 * strength; // ±28° max pitch (nausea-prone axis)
+    const tx = R * Math.sin(theta) * Math.cos(phi);
+    const ty = R * Math.sin(phi);
+    const tz = R * Math.cos(theta) * Math.cos(phi);
+    this.camera.position.x += (tx - this.camera.position.x) * 0.08;
+    this.camera.position.y += (ty - this.camera.position.y) * 0.08;
+    this.camera.position.z += (tz - this.camera.position.z) * 0.08;
+    this.camera.lookAt(0, 0, 0);
     this.camera.updateProjectionMatrix();
 
     if (this.points) {

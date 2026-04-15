@@ -41,8 +41,19 @@ const CONNECTIONS = [
   [28,30],[30,32],[32,28],[15,17],[15,19],[15,21],[16,18],[16,20],[16,22],
 ];
 
-// Aggregate face signal keys (no performer tag) that scenes read
+// Aggregate face signal keys (no performer tag) that scenes read.
+// Unsigned [0,1] expression scores → max across performers.
 const FACE_AGG_KEYS = ['face.mouthOpen', 'face.browUp', 'face.browDown', 'face.eyeSquint', 'face.smile'] as const;
+// Signed [-1,1] head-pose angles → max-by-absolute-value across performers
+// (so a signed value with the largest magnitude wins, regardless of sign).
+const FACE_AGG_KEYS_SIGNED = ['face.yaw', 'face.pitch', 'face.roll'] as const;
+
+// Normalisation constant: ±π/4 (45°) maps to ±1 on the bus.
+const HEAD_POSE_RANGE = Math.PI / 4;
+
+function clampSigned(v: number): number {
+  return v < -1 ? -1 : v > 1 ? 1 : v;
+}
 
 // ---- Module-level registry of active trackers ----
 const trackers = new Map<string, PoseTracker>();
@@ -146,6 +157,7 @@ class PoseTracker {
         runningMode: 'VIDEO',
         numFaces: 1,
         outputFaceBlendshapes: true,
+        outputFacialTransformationMatrixes: true,
       });
       console.log(`[mediapipe:${this.tag}] FaceLandmarker ready`);
     } catch (err) {
@@ -277,6 +289,10 @@ class PoseTracker {
         if (faceRes.faceBlendshapes?.[0]) {
           this.processFaceBlendshapes(faceRes.faceBlendshapes[0].categories);
         }
+        const mat = faceRes.facialTransformationMatrixes?.[0];
+        if (mat) {
+          this.processFaceTransformationMatrix(mat.data);
+        }
       } catch {
         // Silently ignore per-frame face detection errors
       }
@@ -369,6 +385,34 @@ class PoseTracker {
       const gated = this.isFaceKeyGated(suffix);
       if (gated) set(aggKey, best);
     }
+    // Signed head-pose aggregates: pick the value with the largest absolute
+    // magnitude across performers (for a single performer this is passthrough).
+    if (config.faceHeadPose) {
+      for (const aggKey of FACE_AGG_KEYS_SIGNED) {
+        const suffix = aggKey.slice(5);
+        let best = 0;
+        for (const [, tracker] of trackers) {
+          const v = get(`face.${tracker.tag}.${suffix}`);
+          if (Math.abs(v) > Math.abs(best)) best = v;
+        }
+        set(aggKey, best, 0.85);
+      }
+    }
+  }
+
+  /** Extract yaw / pitch / roll from MediaPipe's facial transformation
+   *  4×4 (column-major). Normalised so ±π/4 maps to ±1, then clamped. */
+  private processFaceTransformationMatrix(data: Float32Array | number[]) {
+    if (!config.faceHeadPose) return;
+    // Column-major: m[col*4 + row]. We need rows 0..2 of the 3×3 rotation block.
+    const m02 = data[8],  m12 = data[9],  m22 = data[10];
+    const m10 = data[1],  m11 = data[5];
+    const yaw   = Math.atan2(m02, m22);                          // around Y
+    const pitch = Math.asin(-Math.max(-1, Math.min(1, m12)));    // around X
+    const roll  = Math.atan2(m10, m11);                          // around Z
+    set(`face.${this.tag}.yaw`,   clampSigned(yaw   / HEAD_POSE_RANGE), 0.85);
+    set(`face.${this.tag}.pitch`, clampSigned(pitch / HEAD_POSE_RANGE), 0.85);
+    set(`face.${this.tag}.roll`,  clampSigned(roll  / HEAD_POSE_RANGE), 0.85);
   }
 
   private isFaceKeyGated(suffix: string): boolean {

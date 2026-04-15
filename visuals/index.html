@@ -6,6 +6,10 @@
     <style>
       html, body { margin: 0; background: #000; overflow: hidden; height: 100%; }
       canvas#stage { display: block; width: 100vw; height: 100vh; }
+      body.panic::after {
+        content: ""; position: fixed; inset: 0; background: #000;
+        pointer-events: none; z-index: 9999;
+      }
       #debug {
         position: fixed; top: 8px; left: 8px; bottom: 8px;
         font: 11px/1.45 ui-monospace, Menlo, monospace;

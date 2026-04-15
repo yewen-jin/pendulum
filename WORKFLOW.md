@@ -75,6 +75,21 @@ Examples:
 
 ### Active — current sprint
 
+- [ ] **Smooth jittery inputs across the board** — *next priority.*
+  Animations look gittery because two input paths skip / under-smooth:
+  (1) `getKeypoints()` returns **raw** MediaPipe landmarks, bypassing
+  the bus's one-pole filter — every consumer that anchors to a body
+  position (sacredGeometry centre, debrisField anchors) inherits the
+  raw 30 fps tremor; (2) audio.rms / audio.centroid / audio.onset are
+  smoothed in the bus but α=0.8 at 60 fps is too leaky for fast
+  signals like onset envelopes. Plan: add a per-tracker landmark
+  smoother (one-euro filter is the right primitive — adapts cutoff to
+  velocity so slow holds smooth more than fast gestures), expose
+  smoothed-landmarks via a new `getKeypointsSmoothed(tag)` accessor,
+  and add a separate higher-α path for audio derivatives. Verify by
+  switching sacredGeometry / debrisField to the smoothed accessor and
+  watching the anchor stop hopping. Keep raw access for skeleton
+  overlay so the debug view stays honest.
 - [x] **Two-camera support** — PoseTracker class, per-performer pose states, two skeleton panels, aggregate bus keys (MAX). `2ab69de`
 - [x] **Debug UI grouping** — color-coded collapsible sections: AUDIO/POSE/FACE/MIDI/PHONE. `259b602`
 - [x] **Multi-renderer Phase 1** — Renderer interface + HydraRenderer wrapper + registry. Director uses Renderer instead of raw Hydra. `7316e3e`

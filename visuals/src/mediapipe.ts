@@ -410,10 +410,16 @@ export async function listVideoInputs(): Promise<MediaDeviceInfo[]> {
   return devs.filter(d => d.kind === 'videoinput');
 }
 
-/** Returns the most recent raw landmarks for a performer, or null if
- *  no pose has been detected yet. Coordinates are in MediaPipe's [0,1]
- *  normalised space (x=left→right, y=top→bottom, origin top-left).
- *  Scenes should treat this as read-only. */
+/** Returns the most recent **raw** landmarks for a performer, or null
+ *  if no pose has been detected yet. Coordinates are in MediaPipe's
+ *  [0,1] normalised space (x=left→right, y=top→bottom, origin top-left).
+ *  Scenes should treat this as read-only.
+ *
+ *  ⚠ These are unfiltered — they jitter at the tracker's natural noise
+ *  floor (~1–2 px equivalent at 30 fps). Scenes that anchor visuals to
+ *  a body position will visibly shake. Use this for the skeleton overlay
+ *  (where honesty matters) but prefer a smoothed accessor for visual
+ *  anchoring once one exists — see WORKFLOW "Smooth jittery inputs". */
 export function getKeypoints(tag: string): { x: number; y: number; z?: number }[] | null {
   return trackers.get(tag)?.lastLandmarks ?? null;
 }

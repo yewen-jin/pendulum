@@ -53,6 +53,8 @@ ROG:                   bridge/ (Node, UDP 9000 → WS 9001) ──► browser
 
 The **bus** (`visuals/src/bus.ts`) is the single source of truth. Every input — remote OSC, Web Audio analysis, MediaPipe landmarks — writes into a flat dotted-key signal store with one-pole smoothing. Impulses (MIDI note, onset, panic) are separate and decay linearly. Hydra scene code reads via `get(key)` / `pulse(key)` getters so scenes never need to be re-patched when values change.
 
+Raw MediaPipe landmarks bypass the bus (they're not scalars). For scenes that anchor geometry to a body position, use `getKeypointsSmoothed(tag)` from `mediapipe.ts` — it returns one-euro-filtered coordinates so static poses don't jitter while fast gestures still read. `getKeypoints(tag)` stays for the skeleton overlay and motion derivatives that want the raw signal. `audio.rms` is also pre-smoothed with a one-euro in `audio.ts` because fixed-α traded jitter for attack lag. The filter lives in `visuals/src/filters/one-euro.ts` if you need another instance.
+
 ### OSC convention
 
 OSC path `/a/b/c` maps to bus key `a.b.c`. See `docs/osc-addresses.md` for the full table (`/ableton/*`, `/phone/*`, and derived `audio.*`, `pose.*`).

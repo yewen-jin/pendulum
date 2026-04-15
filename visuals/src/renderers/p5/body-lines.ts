@@ -1,6 +1,6 @@
 import type p5 from 'p5';
 import { get, pulse } from '../../bus';
-import { getKeypoints, getActiveTags } from '../../mediapipe';
+import { getKeypointsSmoothed, getActiveTags } from '../../mediapipe';
 import { config } from '../../settings';
 import type { P5Scene } from './types';
 
@@ -97,7 +97,7 @@ export class BodyLinesScene implements P5Scene {
 
     for (let i = 0; i < tags.length; i++) {
       const tag = tags[i];
-      const lm = getKeypoints(tag);
+      const lm = getKeypointsSmoothed(tag);
       const st = this.state.get(tag) ?? { lastSeen: 0 };
       this.state.set(tag, st);
 

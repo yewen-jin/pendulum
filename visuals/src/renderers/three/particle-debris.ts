@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { get, pulse } from '../../bus';
-import { getKeypoints, getActiveTags } from '../../mediapipe';
+import { getKeypointsSmoothed, getActiveTags } from '../../mediapipe';
 import { config } from '../../settings';
 import type { ThreeScene } from './types';
 
@@ -380,7 +380,7 @@ export class ParticleDebrisScene implements ThreeScene {
 
     for (let pIdx = 0; pIdx < tags.length && pIdx < 2; pIdx++) {
       const tag = tags[pIdx];
-      const lm = getKeypoints(tag);
+      const lm = getKeypointsSmoothed(tag);
       if (!lm) continue;
 
       const prev = this.prevNormLandmarks.get(tag);

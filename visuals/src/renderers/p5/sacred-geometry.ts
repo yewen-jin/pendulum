@@ -1,6 +1,6 @@
 import type p5 from 'p5';
 import { get, pulse } from '../../bus';
-import { getKeypoints, getActiveTags } from '../../mediapipe';
+import { getKeypointsSmoothed, getActiveTags } from '../../mediapipe';
 import type { P5Scene } from './types';
 
 // Strict Islamic geometric tessellation.
@@ -246,7 +246,7 @@ export class SacredGeometryScene implements P5Scene {
     const W = p.width, H = p.height;
     let sumX = 0, sumY = 0, sumScale = 0, n = 0;
     for (const tag of tags) {
-      const lm = getKeypoints(tag);
+      const lm = getKeypointsSmoothed(tag);
       if (!lm) continue;
       const lsh = lm[L_SHOULDER], rsh = lm[R_SHOULDER], nose = lm[NOSE];
       if (!lsh || !rsh) continue;

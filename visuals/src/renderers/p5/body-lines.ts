@@ -182,7 +182,7 @@ export class BodyLinesScene implements P5Scene {
       const h = (hue + t * 30) % 360;
       p.stroke(h, 60 + t * 20, bright, 70 + t * 20);
 
-      (p as any).curveVertex(x + nx * offset, y + ny * offset);
+      p.vertex(x + nx * offset, y + ny * offset);
     }
     p.endShape();
   }
@@ -208,7 +208,7 @@ export class BodyLinesScene implements P5Scene {
       const noiseVal = Math.sin(angle * 5 + this.time * speed)
         * Math.cos(angle * 3.7 + this.time * speed * 0.6);
       const r = radius + noiseVal * amp;
-      (p as any).curveVertex(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r);
+      p.vertex(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r);
     }
     p.endShape();
   }

@@ -25,16 +25,11 @@ export class HydraRenderer implements Renderer {
   }
 
   destroy(): void {
-    // Hydra lacks a clean teardown API: the raf-loop handle is never
-    // stored so we can't call .stop(). Neuter the tick function so
-    // the orphaned loop becomes a harmless no-op, then clear outputs
-    // and release the WebGL context for canvas reuse.
-    if (this.h) {
-      this.h.tick = () => {};
-      this.h.hush();
-    }
-    const gl = this.canvas?.getContext('webgl');
-    gl?.getExtension('WEBGL_lose_context')?.loseContext();
+    // Hydra's raf-loop handle is never stored (hydra-synth.js:124)
+    // so we can't stop it. The director replaces the canvas element
+    // on cross-renderer switch, so the orphaned loop renders to a
+    // detached canvas that will be GC'd. Just drop our references.
     this.h = null;
+    this.canvas = null;
   }
 }

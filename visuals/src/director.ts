@@ -13,6 +13,17 @@ let canvas: HTMLCanvasElement | null = null;
 let activeRenderer: Renderer | null = null;
 let current: string = 'drift';
 
+/** Replace the canvas DOM element to get a fresh WebGL context.
+ *  The old canvas (with any orphaned raf-loops) detaches from the DOM. */
+function freshCanvas(): HTMLCanvasElement {
+  const old = canvas!;
+  const next = document.createElement('canvas');
+  next.id = old.id;
+  old.parentNode!.replaceChild(next, old);
+  canvas = next;
+  return next;
+}
+
 export async function initDirector(c: HTMLCanvasElement) {
   canvas = c;
   registerDefaults();
@@ -31,11 +42,12 @@ export function tick() {
   if (next && next !== current) {
     const nextRenderer = rendererForScene(next);
     if (nextRenderer && nextRenderer !== activeRenderer) {
-      // Cross-renderer switch: destroy old, null out to stop tick,
-      // then init new renderer and apply the scene
+      // Cross-renderer switch: destroy old renderer, swap in a fresh
+      // canvas so the new renderer gets a clean WebGL context
       activeRenderer?.destroy();
       activeRenderer = null;
-      nextRenderer.init(canvas!).then(() => {
+      const c = freshCanvas();
+      nextRenderer.init(c).then(() => {
         activeRenderer = nextRenderer;
         activeRenderer.applyScene(next);
       });

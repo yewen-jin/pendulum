@@ -178,6 +178,59 @@ spread.
 `wSil / wGlow / wInv` to `compact / expansive / elevated` in
 `draw()` are trivial to swap if the feel reads wrong on stage.
 
+### sacredGeometry (`sacred-geometry.ts`)
+
+Radial mandala built from N-fold symmetry — composition of Islamic
+geometry archetypes (flower of life, concentric rings, radial spokes,
+N-gon, {N/k} star polygon, petal arcs, pointed star). The whole pattern
+is **anchored between performers** so it visibly belongs to the room:
+the centre lerps to the midpoint of all active shoulder midpoints, and
+the radius scales with mean shoulder width (~3.5×). Geometry stays
+crystalline (no squiggle noise) to preserve the contemplative feel —
+audio reactivity comes through symmetry count, rotation, hue, and a
+bell-strike onset ring.
+
+**Layers (drawn bottom → top, all rotated together):**
+
+1. **Flower of life** — 7 overlapping circles on a hex lattice (ghost
+   alpha, base grid).
+2. **Concentric rings** — count = `3 + cc16 * 7 + rms * 2`, each ring
+   slightly modulated by RMS so the grid breathes.
+3. **Radial spokes** — N straight lines from centre to each vertex.
+4. **Outer N-gon** — regular polygon outline.
+5. **{N/k} star polygon** — connect every k-th vertex; classic girih
+   star pattern. k from cc20.
+6. **Petal arcs** — quadratic-bezier inward curves between adjacent
+   spokes; depth grows with `openness + expansive`.
+7. **Pointed star** — 2N-vertex inner star (alternating outer/inner
+   radius), inner radius lifted by `elevated`.
+8. **Centre dot** — small filled disc, brightens on onset.
+9. **Onset bell-ring** — concentric ring expands from centre on each
+   `audio.onset`, NOT rotated with the mandala so the hit reads as a
+   bell strike rather than a spin.
+
+**Pose controls:**
+- Centre + radius follow aggregate shoulder midpoint and shoulder width
+- `compact` → reduces N (more legible, low symmetry)
+- `expansive` → raises N, increases saturation, boosts petal depth
+- `elevated` → lifts centre upward, brightens, grows inner star
+- `leftReach - rightReach` → torques the rotation (asymmetric reach
+  bends the mandala)
+- `openness` → petal depth + radius breath
+
+**Audio:**
+- `rms` → ring breathing, saturation, brightness, radius pulse
+- `centroid` → base hue
+- `onset` → centre flash + outward bell-ring burst, rotation kick
+
+**MIDI CCs:** cc16 ring count, cc17 hue shift, cc18 symmetry N
+(6–16), cc19 rotation speed, cc20 star skip k (in {N/k}), cc21 trail
+amount, cc22 extra rotation spin, cc23 scale multiplier (knob at zero
+leaves scale alone), cc25 brightness.
+
+**No panel-tunables.** Scale auto-fits to body size; tuning constants
+(`N_MIN`, `N_MAX`, anchor `3.5×` shoulder factor) live in the file.
+
 ---
 
 ## Adding a new scene

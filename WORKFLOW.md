@@ -63,6 +63,11 @@ Examples:
 - [x] P5Renderer + body-lines scene (upper-body squiggly abstract figure)
 - [x] Renderers reorganised into per-renderer subdirectories (hydra/, three/, p5/)
 - [x] Hydra modes split into per-scene class files matching three/ and p5/ structure
+- [x] bodyLines evolved with 4 co-existing layers (ribbons/silhouette/glow/inverse) crossfaded by pose state
+- [x] debrisField anchored to pose keypoints (per-performer palette, gesture-driven spawn velocity)
+- [x] Scene-tuning settings group (particleVelScale, particleViewScale, bodyLinesDropoutMs)
+- [x] docs/scene-controls.md — per-scene reference for all renderers
+- [x] sacredGeometry p5 scene — N-fold radial mandala anchored between performers
 
 ---
 

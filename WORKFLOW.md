@@ -153,3 +153,4 @@ Legacy session log archived in `notes/log.md` (read-only, no longer updated).
 | 2026-04-15 | Input smoothing | one-euro filter module; LandmarkSmoother per PoseTracker; audio.rms pre-smoothed; `getKeypointsSmoothed()` accessor; live smoothing sliders in rehearsal panel |
 | 2026-04-15 | Face-driven camera | FaceLandmarker transformation matrix → face.yaw/pitch/roll on bus; debrisField camera orbit; `faceHeadPose` toggle + `faceCamStrength` slider |
 | 2026-04-15 | MobMuPlat bringup fixes | `.mmp` pdFile reference, 7-scene radio Pd router with sibling-clear exclusivity, panic blackout CSS, discrete-key smoothing bypass, `/runToggle` rewired as `/phone/runToggle` |
+| 2026-04-15 | Phone scene selector revert | Replaced 7-toggle radio with single horizontal `MMPSlider` (`range:6`) + floor-to-int in Pd; scene registry 0..6 = drift/debris/signalLoss/reentry/particleDebris/bodyLines/sacredGeometry |
